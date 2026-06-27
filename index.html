@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Entropia Estrutural</title>
+  <meta name="description" content="Simulador interativo do modelo matemático de Entropia Estrutural — dinâmica de sistemas socioambientais complexos.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌀</text></svg>">
+</head>
+<body>
+
+  <!-- ═══ Header ═══════════════════════════════════════════════════ -->
+  <header class="header">
+    <h1 class="header-title">Matemática da Entropia Estrutural</h1>
+    <p class="header-subtitle">Simulador de Dinâmica Socioambiental Complexa — 1970–2100</p>
+    <p class="header-author">Modelo baseado no artigo de Entropia Estrutural</p>
+  </header>
+
+  <!-- ═══ Equations banner ═════════════════════════════════════════ -->
+  <div class="equations-bar" id="equations-bar">
+    <span class="equation-item tooltip-trigger" data-tooltip="eq1">
+      <span class="eq-label">Eq.1</span>
+      dN/dt = r_N·N·(1 − N/K_eff) − μ_N·N·max(0, λ − λ_crit)
+      <span class="info-icon">ℹ️</span>
+    </span>
+    <span class="equation-item tooltip-trigger" data-tooltip="eq2">
+      <span class="eq-label">Eq.2</span>
+      K_eff = K₀·e^(−η₅D − η₆ΔT)·(1 − ωU)·(1 + φTG)
+      <span class="info-icon">ℹ️</span>
+    </span>
+    <span class="equation-item tooltip-trigger" data-tooltip="eq3">
+      <span class="eq-label">Eq.3</span>
+      dD/dt = α₁C + α₂U + α₃P − β_D·T·G·D
+      <span class="info-icon">ℹ️</span>
+    </span>
+    <span class="equation-item tooltip-trigger" data-tooltip="eq4">
+      <span class="eq-label">Eq.4</span>
+      dR/dt = ρ_G·G·(1−R) − ρ_D·D·R − ρ_λ·λ·R
+      <span class="info-icon">ℹ️</span>
+    </span>
+    <span class="equation-item tooltip-trigger" data-tooltip="eq5">
+      <span class="eq-label">Eq.5</span>
+      λ = w₁(N/K_eff) + w₂D + w₃ΔT̃ + w₄U + w₅I − w₆TG − w₇R
+      <span class="info-icon">ℹ️</span>
+    </span>
+  </div>
+
+  <!-- Educational Modal for Tooltips -->
+  <div class="edu-modal-overlay" id="edu-modal">
+    <div class="edu-modal-content">
+      <button class="edu-modal-close" id="edu-modal-close">✕</button>
+      <h3 id="edu-modal-title">Título</h3>
+      <p id="edu-modal-body">Explicação didática vai aqui...</p>
+    </div>
+  </div>
+
+  <!-- ═══ Scenario selector ════════════════════════════════════════ -->
+  <div class="scenario-bar">
+    <span class="scenario-bar-label">Cenário:</span>
+    <div id="scenario-buttons"></div>
+    <div class="scenario-description" id="scenario-description">
+      Tendências atuais continuam: progresso tecnológico moderado, governança fraca, aquecimento de ~2.7°C.
+    </div>
+  </div>
+
+  <!-- ═══ Main content ═════════════════════════════════════════════ -->
+  <main class="main-container">
+
+    <!-- Actions bar -->
+    <div class="actions-bar">
+      <button class="export-btn" id="export-btn">
+        📥 Exportar CSV
+      </button>
+      <span class="simulation-info" id="sim-info">
+        Pronto para simular
+      </span>
+    </div>
+
+    <!-- Chart grid -->
+    <div class="chart-grid">
+      <div class="chart-card" id="card-lambda">
+        <canvas id="chart-lambda"></canvas>
+      </div>
+      <div class="chart-card" id="card-population">
+        <canvas id="chart-population"></canvas>
+      </div>
+      <div class="chart-card" id="card-degradation">
+        <canvas id="chart-degradation"></canvas>
+      </div>
+      <div class="chart-card" id="card-dashboard">
+        <canvas id="chart-dashboard"></canvas>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══ Tooltip ══════════════════════════════════════════════════ -->
+  <div id="tooltip"></div>
+
+  <!-- ═══ Sidebar toggle ═══════════════════════════════════════════ -->
+  <button id="sidebar-toggle" title="Parâmetros do modelo">⚙</button>
+
+  <!-- ═══ Sidebar ══════════════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-title">Parâmetros do Modelo</div>
+    <div id="param-panel"></div>
+    <div id="custom-sliders"></div>
+  </aside>
+
+  <!-- ═══ Footer ═══════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <p>Calculadora de Entropia Estrutural — Modelo ODE com integrador RK4 (dt = 0.25 anos)</p>
+    <p>Todos os cálculos executam localmente no navegador. Nenhum dado é enviado a servidores.</p>
+  </footer>
+
+  <!-- ═══ Scripts ══════════════════════════════════════════════════ -->
+  <script src="js/model.js"></script>
+  <script src="js/scenarios.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/controls.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,671 @@
+/**
+ * charts.js — Canvas-based Chart Engine
+ * 
+ * Renders 4 chart panels:
+ *   1. λ(t) — Structural Entropic Pressure with threshold zones
+ *   2. N(t) vs K_eff(t) — Population vs Carrying Capacity
+ *   3. D(t) and R(t) — Degradation vs Resilience
+ *   4. System State Dashboard — gauges and indicators
+ */
+
+'use strict';
+
+const ChartEngine = (() => {
+
+  // ── Theme ───────────────────────────────────────────────────────────
+  const THEME = {
+    bg:         '#0a0e17',
+    cardBg:     'rgba(17,24,39,0.8)',
+    gridLine:   'rgba(148,163,184,0.1)',
+    gridLineAlt:'rgba(148,163,184,0.05)',
+    axisLine:   'rgba(148,163,184,0.3)',
+    text:       '#94a3b8',
+    textBright: '#f1f5f9',
+    cyan:       '#06b6d4',
+    emerald:    '#10b981',
+    amber:      '#f59e0b',
+    red:        '#ef4444',
+    purple:     '#8b5cf6',
+    rose:       '#f43f5e',
+    sky:        '#38bdf8',
+    teal:       '#14b8a6',
+    white30:    'rgba(255,255,255,0.3)',
+    white10:    'rgba(255,255,255,0.1)'
+  };
+
+  // ── Utility ────────────────────────────────────────────────────────
+  const DPR = window.devicePixelRatio || 1;
+
+  function setupCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = rect.width * DPR;
+    canvas.height = rect.height * DPR;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+    return { ctx, w: rect.width, h: rect.height };
+  }
+
+  function niceRange(min, max, padding) {
+    padding = padding || 0.08;
+    const range = max - min || 1;
+    return {
+      min: min - range * padding,
+      max: max + range * padding
+    };
+  }
+
+  function drawGrid(ctx, w, h, margin, xMin, xMax, yMin, yMax, opts) {
+    opts = opts || {};
+    const xTicks = opts.xTicks || 7;
+    const yTicks = opts.yTicks || 6;
+    const plotW = w - margin.left - margin.right;
+    const plotH = h - margin.top - margin.bottom;
+    const xLabel = opts.xLabel || '';
+    const yLabel = opts.yLabel || '';
+    const title  = opts.title  || '';
+
+    ctx.save();
+
+    // Background
+    ctx.fillStyle = 'transparent';
+    ctx.fillRect(0, 0, w, h);
+
+    // Title
+    if (title) {
+      ctx.fillStyle = THEME.textBright;
+      ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(title, margin.left + plotW / 2, margin.top - 10);
+    }
+
+    // Grid lines
+    ctx.strokeStyle = THEME.gridLine;
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([]);
+
+    // Y grid & labels
+    ctx.font = '10px Inter, system-ui, sans-serif';
+    ctx.fillStyle = THEME.text;
+    ctx.textAlign = 'right';
+
+    for (let i = 0; i <= yTicks; i++) {
+      const frac = i / yTicks;
+      const y = margin.top + plotH - frac * plotH;
+      const val = yMin + frac * (yMax - yMin);
+
+      ctx.beginPath();
+      ctx.moveTo(margin.left, y);
+      ctx.lineTo(margin.left + plotW, y);
+      ctx.stroke();
+
+      let label;
+      if (opts.yFormat) {
+        label = opts.yFormat(val);
+      } else if (Math.abs(val) >= 1e9) {
+        label = (val / 1e9).toFixed(1) + 'B';
+      } else if (Math.abs(val) >= 1e6) {
+        label = (val / 1e6).toFixed(1) + 'M';
+      } else {
+        label = val.toFixed(2);
+      }
+      ctx.fillText(label, margin.left - 6, y + 3);
+    }
+
+    // X grid & labels
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= xTicks; i++) {
+      const frac = i / xTicks;
+      const x = margin.left + frac * plotW;
+      const val = xMin + frac * (xMax - xMin);
+
+      ctx.beginPath();
+      ctx.strokeStyle = THEME.gridLine;
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + plotH);
+      ctx.stroke();
+
+      ctx.fillStyle = THEME.text;
+      ctx.fillText(Math.round(val).toString(), x, margin.top + plotH + 16);
+    }
+
+    // Axes
+    ctx.strokeStyle = THEME.axisLine;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + plotH);
+    ctx.lineTo(margin.left + plotW, margin.top + plotH);
+    ctx.stroke();
+
+    // Y axis label
+    if (yLabel) {
+      ctx.save();
+      ctx.translate(12, margin.top + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = THEME.text;
+      ctx.font = '10px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(yLabel, 0, 0);
+      ctx.restore();
+    }
+
+    ctx.restore();
+
+    // Return mapping functions
+    return {
+      plotW, plotH,
+      mapX: (val) => margin.left + ((val - xMin) / (xMax - xMin)) * plotW,
+      mapY: (val) => margin.top + plotH - ((val - yMin) / (yMax - yMin)) * plotH
+    };
+  }
+
+  function drawLine(ctx, time, data, mapX, mapY, color, lineWidth, dashed) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth || 1.5;
+    if (dashed) ctx.setLineDash(dashed);
+    else ctx.setLineDash([]);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < time.length; i += 2) { // skip every other for performance
+      const x = mapX(time[i]);
+      const y = mapY(data[i]);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawAreaUnder(ctx, time, data, mapX, mapY, yBase, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(mapX(time[0]), yBase);
+    for (let i = 0; i < time.length; i += 2) {
+      ctx.lineTo(mapX(time[i]), mapY(data[i]));
+    }
+    ctx.lineTo(mapX(time[time.length - 1]), yBase);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawThreshold(ctx, mapX, mapY, xMin, xMax, value, color, label, plotW, margin) {
+    const y = mapY(value);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(mapX(xMin), y);
+    ctx.lineTo(mapX(xMax), y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (label) {
+      ctx.fillStyle = color;
+      ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(label, margin.left + plotW - 4, y - 5);
+    }
+  }
+
+  function drawEventMarker(ctx, mapX, mapY, t, yMin, yMax, color, label, margin, plotH) {
+    if (t === null || t === undefined) return;
+    const x = mapX(t);
+    const yTop = margin.top;
+    const yBot = margin.top + plotH;
+
+    // Vertical line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, yTop);
+    ctx.lineTo(x, yBot);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Diamond marker
+    const my = yTop + 12;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, my - 5);
+    ctx.lineTo(x + 5, my);
+    ctx.lineTo(x, my + 5);
+    ctx.lineTo(x - 5, my);
+    ctx.closePath();
+    ctx.fill();
+
+    // Label
+    if (label) {
+      ctx.fillStyle = color;
+      ctx.font = 'bold 9px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, my + 16);
+    }
+  }
+
+  function drawLegend(ctx, items, x, y) {
+    ctx.font = '10px Inter, system-ui, sans-serif';
+    let cx = x;
+    items.forEach(item => {
+      // Color swatch
+      ctx.fillStyle = item.color;
+      ctx.fillRect(cx, y - 7, 12, 3);
+      if (item.dashed) {
+        ctx.fillStyle = 'transparent';
+        ctx.clearRect(cx + 3, y - 7, 3, 3);
+        ctx.clearRect(cx + 9, y - 7, 3, 3);
+      }
+      cx += 16;
+      // Label
+      ctx.fillStyle = THEME.text;
+      ctx.textAlign = 'left';
+      ctx.fillText(item.label, cx, y);
+      cx += ctx.measureText(item.label).width + 18;
+    });
+  }
+
+  // ── Chart 1: λ(t) Pressure ────────────────────────────────────────
+  function renderLambdaChart(canvas, results) {
+    const { ctx, w, h } = setupCanvas(canvas);
+    const margin = { top: 36, right: 16, bottom: 30, left: 52 };
+
+    const time = results.time;
+    const lambda = results.lambda;
+    const lambdaCrit = results.params.lambda_crit;
+
+    // Calculate range
+    let lMin = Infinity, lMax = -Infinity;
+    for (let i = 0; i < lambda.length; i++) {
+      if (lambda[i] < lMin) lMin = lambda[i];
+      if (lambda[i] > lMax) lMax = lambda[i];
+    }
+    const yRange = niceRange(Math.min(lMin, 0), Math.max(lMax, lambdaCrit + 0.3), 0.1);
+
+    const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
+      results.params.t_start, results.params.t_end,
+      yRange.min, yRange.max, {
+        title: 'λ(t) — Pressão Entrópica Estrutural',
+        yLabel: 'λ',
+        yFormat: v => v.toFixed(2),
+        yTicks: 6
+      });
+
+    // Danger zone above λ_crit
+    const yCrit = mapY(lambdaCrit);
+    const yTop  = mapY(yRange.max);
+    ctx.fillStyle = 'rgba(239,68,68,0.06)';
+    ctx.fillRect(margin.left, yTop, plotW, yCrit - yTop);
+
+    // Safe zone below
+    const yBot = mapY(yRange.min);
+    ctx.fillStyle = 'rgba(16,185,129,0.04)';
+    ctx.fillRect(margin.left, yCrit, plotW, yBot - yCrit);
+
+    // λ_crit threshold
+    drawThreshold(ctx, mapX, mapY, results.params.t_start, results.params.t_end,
+      lambdaCrit, THEME.red, 'λ_crit = ' + lambdaCrit.toFixed(1), plotW, margin);
+
+    // Area under curve colored by zone
+    // Draw the λ line with gradient feel
+    for (let i = 2; i < time.length; i += 2) {
+      const x0 = mapX(time[i - 2]);
+      const x1 = mapX(time[i]);
+      const y0 = mapY(lambda[i - 2]);
+      const y1 = mapY(lambda[i]);
+      const val = (lambda[i - 2] + lambda[i]) / 2;
+      const ratio = Math.max(0, Math.min(1, val / (lambdaCrit * 1.5)));
+
+      // Fill down to baseline
+      const baseY = mapY(0);
+      ctx.fillStyle = val >= lambdaCrit
+        ? `rgba(239,68,68,${0.08 + ratio * 0.12})`
+        : `rgba(6,182,212,${0.06 + (1 - ratio) * 0.08})`;
+      ctx.beginPath();
+      ctx.moveTo(x0, baseY);
+      ctx.lineTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.lineTo(x1, baseY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Main λ line
+    drawLine(ctx, time, lambda, mapX, mapY, THEME.cyan, 2);
+
+    // Glow effect
+    ctx.save();
+    ctx.shadowColor = THEME.cyan;
+    ctx.shadowBlur = 8;
+    drawLine(ctx, time, lambda, mapX, mapY, THEME.cyan, 1);
+    ctx.restore();
+
+    // Event markers
+    drawEventMarker(ctx, mapX, mapY, results.events.tau2, yRange.min, yRange.max,
+      THEME.red, 'τ₂', margin, plotH);
+    drawEventMarker(ctx, mapX, mapY, results.events.recoveryTime, yRange.min, yRange.max,
+      THEME.emerald, 'Recup.', margin, plotH);
+
+    // Legend
+    drawLegend(ctx, [
+      { color: THEME.cyan, label: 'λ(t)' },
+      { color: THEME.red, label: 'λ_crit', dashed: true }
+    ], margin.left + 4, margin.top + plotH + 26);
+  }
+
+  // ── Chart 2: N(t) vs K_eff(t) ────────────────────────────────────
+  function renderPopulationChart(canvas, results) {
+    const { ctx, w, h } = setupCanvas(canvas);
+    const margin = { top: 36, right: 16, bottom: 30, left: 58 };
+
+    const time = results.time;
+    const N    = results.N;
+    const Keff = results.Keff;
+
+    let vMin = Infinity, vMax = -Infinity;
+    for (let i = 0; i < N.length; i++) {
+      const mn = Math.min(N[i], Keff[i]);
+      const mx = Math.max(N[i], Keff[i]);
+      if (mn < vMin) vMin = mn;
+      if (mx > vMax) vMax = mx;
+    }
+    const yRange = niceRange(Math.max(0, vMin * 0.9), vMax, 0.08);
+
+    const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
+      results.params.t_start, results.params.t_end,
+      yRange.min, yRange.max, {
+        title: 'N(t) vs K_eff(t) — População e Capacidade de Suporte',
+        yLabel: 'Pessoas',
+        yTicks: 6
+      });
+
+    // Area between N and Keff when N > Keff (overshoot zone)
+    for (let i = 2; i < time.length; i += 2) {
+      if (N[i] > Keff[i]) {
+        const x0 = mapX(time[i - 2]);
+        const x1 = mapX(time[i]);
+        ctx.fillStyle = 'rgba(239,68,68,0.08)';
+        ctx.fillRect(x0, mapY(Math.max(N[i-2], N[i])),
+          x1 - x0, mapY(Math.min(Keff[i-2], Keff[i])) - mapY(Math.max(N[i-2], N[i])));
+      }
+    }
+
+    // K_eff area fill
+    drawAreaUnder(ctx, time, Keff, mapX, mapY, mapY(yRange.min), 'rgba(16,185,129,0.06)');
+
+    // Lines
+    drawLine(ctx, time, Keff, mapX, mapY, THEME.emerald, 2, [6, 4]);
+    drawLine(ctx, time, N, mapX, mapY, THEME.sky, 2);
+
+    // Glow on N
+    ctx.save();
+    ctx.shadowColor = THEME.sky;
+    ctx.shadowBlur = 6;
+    drawLine(ctx, time, N, mapX, mapY, THEME.sky, 1);
+    ctx.restore();
+
+    // τ1 marker
+    drawEventMarker(ctx, mapX, mapY, results.events.tau1, yRange.min, yRange.max,
+      THEME.amber, 'τ₁', margin, plotH);
+
+    // Legend
+    drawLegend(ctx, [
+      { color: THEME.sky, label: 'N(t) População' },
+      { color: THEME.emerald, label: 'K_eff(t) Capacidade', dashed: true }
+    ], margin.left + 4, margin.top + plotH + 26);
+  }
+
+  // ── Chart 3: D(t) and R(t) ───────────────────────────────────────
+  function renderDegradationChart(canvas, results) {
+    const { ctx, w, h } = setupCanvas(canvas);
+    const margin = { top: 36, right: 16, bottom: 30, left: 46 };
+
+    const time = results.time;
+    const D = results.D;
+    const R = results.R;
+
+    const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
+      results.params.t_start, results.params.t_end,
+      0, 1, {
+        title: 'D(t) vs R(t) — Degradação e Resiliência',
+        yLabel: 'Nível [0,1]',
+        yFormat: v => v.toFixed(2),
+        yTicks: 5
+      });
+
+    // Area fills
+    drawAreaUnder(ctx, time, D, mapX, mapY, mapY(0), 'rgba(239,68,68,0.08)');
+    drawAreaUnder(ctx, time, R, mapX, mapY, mapY(0), 'rgba(16,185,129,0.06)');
+
+    // R_min threshold
+    drawThreshold(ctx, mapX, mapY, results.params.t_start, results.params.t_end,
+      results.params.R_min, THEME.amber, 'R_min', plotW, margin);
+
+    // Lines
+    drawLine(ctx, time, R, mapX, mapY, THEME.emerald, 2);
+    drawLine(ctx, time, D, mapX, mapY, THEME.red, 2);
+
+    // Glow
+    ctx.save();
+    ctx.shadowColor = THEME.emerald;
+    ctx.shadowBlur = 5;
+    drawLine(ctx, time, R, mapX, mapY, THEME.emerald, 0.8);
+    ctx.restore();
+    ctx.save();
+    ctx.shadowColor = THEME.red;
+    ctx.shadowBlur = 5;
+    drawLine(ctx, time, D, mapX, mapY, THEME.red, 0.8);
+    ctx.restore();
+
+    // Fragmentation marker
+    drawEventMarker(ctx, mapX, mapY, results.events.fragmentationTime, 0, 1,
+      THEME.purple, 'Frag.', margin, plotH);
+
+    // Legend
+    drawLegend(ctx, [
+      { color: THEME.red, label: 'D(t) Degradação' },
+      { color: THEME.emerald, label: 'R(t) Resiliência' }
+    ], margin.left + 4, margin.top + plotH + 26);
+  }
+
+  // ── Chart 4: System State Dashboard ────────────────────────────────
+  function renderDashboard(canvas, results) {
+    const { ctx, w, h } = setupCanvas(canvas);
+    const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+
+    // Get final values (year 2100)
+    const lastIdx = results.length - 1;
+    const finalLambda = results.lambda[lastIdx];
+    const finalN      = results.N[lastIdx];
+    const finalKeff   = results.Keff[lastIdx];
+    const finalD      = results.D[lastIdx];
+    const finalR      = results.R[lastIdx];
+    const lambdaCrit  = results.params.lambda_crit;
+
+    // Title
+    ctx.fillStyle = THEME.textBright;
+    ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Painel de Estado do Sistema (2100)', w / 2, 24);
+
+    // Draw gauges in a 2x3 grid
+    const gauges = [
+      { label: 'λ Final', value: finalLambda, max: 2, color: finalLambda >= lambdaCrit ? THEME.red : THEME.emerald, format: v => v.toFixed(3) },
+      { label: 'N/K_eff', value: finalN / Math.max(finalKeff, 1), max: 2, color: finalN > finalKeff ? THEME.red : THEME.sky, format: v => v.toFixed(3) },
+      { label: 'Degradação', value: finalD, max: 1, color: finalD > 0.5 ? THEME.red : finalD > 0.3 ? THEME.amber : THEME.emerald, format: v => (v * 100).toFixed(1) + '%' },
+      { label: 'Resiliência', value: finalR, max: 1, color: finalR < 0.2 ? THEME.red : finalR < 0.4 ? THEME.amber : THEME.emerald, format: v => (v * 100).toFixed(1) + '%' },
+      { label: 'Pop. (bilhões)', value: finalN / 1e9, max: 15, color: THEME.sky, format: v => v.toFixed(2) + 'B' },
+      { label: 'K_eff (bilhões)', value: finalKeff / 1e9, max: 15, color: THEME.emerald, format: v => v.toFixed(2) + 'B' }
+    ];
+
+    const cols = 3;
+    const rows = 2;
+    const gw = (w - 30) / cols;
+    const gh = (h - 60) / rows;
+
+    gauges.forEach((g, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const cx = 15 + col * gw + gw / 2;
+      const cy = 44 + row * gh + gh / 2;
+      const radius = Math.min(gw, gh) * 0.30;
+
+      drawGauge(ctx, cx, cy, radius, g);
+    });
+
+    // Events summary
+    const evY = h - 28;
+    ctx.font = '10px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+
+    const events = [];
+    if (results.events.tau1) events.push(`τ₁ = ${Math.round(results.events.tau1)}`);
+    if (results.events.tau2) events.push(`τ₂ = ${Math.round(results.events.tau2)}`);
+    if (results.events.recoveryTime) events.push(`Recup. = ${Math.round(results.events.recoveryTime)}`);
+    if (results.events.fragmentationTime) events.push(`Frag. = ${Math.round(results.events.fragmentationTime)}`);
+    if (events.length === 0) events.push('Nenhum evento crítico detectado');
+
+    ctx.fillStyle = THEME.text;
+    ctx.fillText('Eventos: ' + events.join('  │  '), w / 2, evY);
+
+    // System status
+    let status, statusColor;
+    if (finalLambda < lambdaCrit * 0.6) {
+      status = '● ESTÁVEL'; statusColor = THEME.emerald;
+    } else if (finalLambda < lambdaCrit) {
+      status = '● ALERTA'; statusColor = THEME.amber;
+    } else if (finalLambda < lambdaCrit * 1.3) {
+      status = '● CRÍTICO'; statusColor = THEME.red;
+    } else {
+      status = '● COLAPSO'; statusColor = THEME.rose;
+    }
+    ctx.font = 'bold 12px Inter, system-ui, sans-serif';
+    ctx.fillStyle = statusColor;
+    ctx.fillText(status, w / 2, evY - 14);
+  }
+
+  function drawGauge(ctx, cx, cy, radius, gauge) {
+    const startAngle = Math.PI * 0.75;
+    const endAngle   = Math.PI * 2.25;
+    const totalArc   = endAngle - startAngle;
+    const valueFrac  = Math.min(1, Math.max(0, gauge.value / gauge.max));
+    const valueAngle = startAngle + totalArc * valueFrac;
+
+    // Background arc
+    ctx.strokeStyle = THEME.white10;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.stroke();
+
+    // Value arc
+    ctx.strokeStyle = gauge.color;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, valueAngle);
+    ctx.stroke();
+
+    // Glow
+    ctx.save();
+    ctx.shadowColor = gauge.color;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = gauge.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, valueAngle);
+    ctx.stroke();
+    ctx.restore();
+
+    // Value text
+    ctx.fillStyle = THEME.textBright;
+    ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(gauge.format(gauge.value), cx, cy + 4);
+
+    // Label
+    ctx.fillStyle = THEME.text;
+    ctx.font = '9px Inter, system-ui, sans-serif';
+    ctx.fillText(gauge.label, cx, cy + radius + 16);
+  }
+
+  // ── Public API ────────────────────────────────────────────────────
+  function renderAll(results) {
+    const c1 = document.getElementById('chart-lambda');
+    const c2 = document.getElementById('chart-population');
+    const c3 = document.getElementById('chart-degradation');
+    const c4 = document.getElementById('chart-dashboard');
+
+    if (c1) renderLambdaChart(c1, results);
+    if (c2) renderPopulationChart(c2, results);
+    if (c3) renderDegradationChart(c3, results);
+    if (c4) renderDashboard(c4, results);
+  }
+
+  // Tooltip tracking
+  function attachTooltip(canvasId, results, chartType) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const tooltip = document.getElementById('tooltip');
+    if (!tooltip) return;
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const w = rect.width;
+      const margin = chartType === 'dashboard' ? 0 : 52;
+      const plotW = w - margin - 16;
+
+      if (x < margin || x > margin + plotW || chartType === 'dashboard') {
+        tooltip.style.display = 'none';
+        return;
+      }
+
+      const frac = (x - margin) / plotW;
+      const year = results.params.t_start + frac * (results.params.t_end - results.params.t_start);
+      const idx = Math.round(frac * (results.length - 1));
+
+      if (idx < 0 || idx >= results.length) {
+        tooltip.style.display = 'none';
+        return;
+      }
+
+      let html = `<strong>${Math.round(year)}</strong><br>`;
+      if (chartType === 'lambda') {
+        html += `λ = ${results.lambda[idx].toFixed(4)}<br>`;
+        html += `λ_crit = ${results.params.lambda_crit}`;
+      } else if (chartType === 'population') {
+        html += `N = ${(results.N[idx] / 1e9).toFixed(3)}B<br>`;
+        html += `K_eff = ${(results.Keff[idx] / 1e9).toFixed(3)}B`;
+      } else if (chartType === 'degradation') {
+        html += `D = ${(results.D[idx] * 100).toFixed(1)}%<br>`;
+        html += `R = ${(results.R[idx] * 100).toFixed(1)}%`;
+      }
+
+      tooltip.innerHTML = html;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top  = (e.clientY - 10) + 'px';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      const tooltip = document.getElementById('tooltip');
+      if (tooltip) tooltip.style.display = 'none';
+    });
+  }
+
+  return {
+    renderAll,
+    renderLambdaChart,
+    renderPopulationChart,
+    renderDegradationChart,
+    renderDashboard,
+    attachTooltip,
+    setupCanvas
+  };
+
+})();
