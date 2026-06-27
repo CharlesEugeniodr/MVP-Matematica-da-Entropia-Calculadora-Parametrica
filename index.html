@@ -17,33 +17,10 @@
     <p class="header-author">Modelo baseado no artigo de Entropia Estrutural</p>
   </header>
 
-  <!-- ═══ Equations banner ═════════════════════════════════════════ -->
-  <div class="equations-bar" id="equations-bar">
-    <span class="equation-item tooltip-trigger" data-tooltip="eq1">
-      <span class="eq-label">Eq.1</span>
-      dN/dt = r_N·N·(1 − N/K_eff) − μ_N·N·max(0, λ − λ_crit)
-      <span class="info-icon">ℹ️</span>
-    </span>
-    <span class="equation-item tooltip-trigger" data-tooltip="eq2">
-      <span class="eq-label">Eq.2</span>
-      K_eff = K₀·e^(−η₅D − η₆ΔT)·(1 − ωU)·(1 + φTG)
-      <span class="info-icon">ℹ️</span>
-    </span>
-    <span class="equation-item tooltip-trigger" data-tooltip="eq3">
-      <span class="eq-label">Eq.3</span>
-      dD/dt = α₁C + α₂U + α₃P − β_D·T·G·D
-      <span class="info-icon">ℹ️</span>
-    </span>
-    <span class="equation-item tooltip-trigger" data-tooltip="eq4">
-      <span class="eq-label">Eq.4</span>
-      dR/dt = ρ_G·G·(1−R) − ρ_D·D·R − ρ_λ·λ·R
-      <span class="info-icon">ℹ️</span>
-    </span>
-    <span class="equation-item tooltip-trigger" data-tooltip="eq5">
-      <span class="eq-label">Eq.5</span>
-      λ = w₁(N/K_eff) + w₂D + w₃ΔT̃ + w₄U + w₅I − w₆TG − w₇R
-      <span class="info-icon">ℹ️</span>
-    </span>
+  <!-- ═══ Equations banner (Oculto a pedido do autor) ═══════════════ -->
+  <div class="equations-bar" id="equations-bar" style="display: none;">
+    <!-- Equações foram removidas da visualização principal, 
+         mas o motor matemático continua operando integralmente no backend/modelo -->
   </div>
 
   <!-- Educational Modal for Tooltips -->
@@ -64,13 +41,40 @@
     </div>
   </div>
 
+  <!-- ═══ Projection & Shocks Panel ════════════════════════════════ -->
+  <div class="control-dashboard-bar">
+    <div class="projection-regulator">
+      <span class="panel-label tooltip-trigger" data-tooltip="regulator">⚙️ Regulador de Projeção (Manual)</span>
+      <div class="regulator-controls">
+        <label>Governança & Resiliência
+          <input type="range" id="reg-gov" min="-50" max="50" value="0" class="reg-slider">
+          <span id="reg-gov-val">0%</span>
+        </label>
+        <label>Degradação & Consumo
+          <input type="range" id="reg-deg" min="-50" max="50" value="0" class="reg-slider">
+          <span id="reg-deg-val">0%</span>
+        </label>
+        <button id="btn-reset-regulator" class="btn-small">Zerar Regulador</button>
+      </div>
+    </div>
+    
+    <div class="shock-panel">
+      <span class="panel-label tooltip-trigger" data-tooltip="shocks">⚡ Injeção de Choque de Poisson</span>
+      <div class="shock-buttons">
+        <button id="btn-shock-pandemic" class="shock-btn danger">🦠 Pandemia</button>
+        <button id="btn-shock-war" class="shock-btn danger">⚔️ Guerra</button>
+        <button id="btn-shock-tech" class="shock-btn success">💡 Salto Tech</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ Main content ═════════════════════════════════════════════ -->
   <main class="main-container">
 
     <!-- Actions bar -->
     <div class="actions-bar">
       <button class="export-btn" id="export-btn">
-        📥 Exportar CSV
+        📊 Relatório de Auditoria de Cenário (.csv)
       </button>
       <span class="simulation-info" id="sim-info">
         Pronto para simular
@@ -91,6 +95,9 @@
       <div class="chart-card" id="card-dashboard">
         <canvas id="chart-dashboard"></canvas>
       </div>
+      <div class="chart-card phase-space-card" id="card-phasespace">
+        <canvas id="chart-phasespace"></canvas>
+      </div>
     </div>
 
   </main>
@@ -110,8 +117,9 @@
 
   <!-- ═══ Footer ═══════════════════════════════════════════════════ -->
   <footer class="footer">
-    <p>Calculadora de Entropia Estrutural — Modelo ODE com integrador RK4 (dt = 0.25 anos)</p>
-    <p>Todos os cálculos executam localmente no navegador. Nenhum dado é enviado a servidores.</p>
+    <p>Calculadora de Entropia Estrutural — Motor Estocástico com Atrasos (DDEs)</p>
+    <p class="footer-author">Idealizador e Construtor: <strong>Charles de Paula Eugenio</strong></p>
+    <p>Execução local no navegador. Nenhum dado é enviado a servidores.</p>
   </footer>
 
   <!-- ═══ Scripts ══════════════════════════════════════════════════ -->

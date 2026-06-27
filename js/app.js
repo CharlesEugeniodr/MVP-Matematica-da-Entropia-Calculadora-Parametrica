@@ -62,6 +62,8 @@ const App = (() => {
 
     params   = params   || Controls.getParams();
     scenario = scenario || Controls.getCurrentScenario();
+    const regulators = Controls.getRegulators();
+    const shocks     = Controls.getShocks();
 
     // CALIBRAÇÃO CIENTÍFICA: aplicar overrides do cenário aos parâmetros
     if (scenario.overrides) {
@@ -72,7 +74,7 @@ const App = (() => {
 
     // Run simulation
     try {
-      currentResults = StructuralEntropyModel.simulate(params, scenario);
+      currentResults = StructuralEntropyModel.simulate(params, scenario, regulators, shocks);
       Controls._lastResults = currentResults;
 
       const elapsed = (performance.now() - t0).toFixed(1);

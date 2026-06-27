@@ -6,6 +6,7 @@
  *   2. N(t) vs K_eff(t) — Population vs Carrying Capacity
  *   3. D(t) and R(t) — Degradation vs Resilience
  *   4. System State Dashboard — gauges and indicators
+ *   5. Phase Space (N vs λ) — Attraction/Collapse Spirals
  */
 
 'use strict';
@@ -592,17 +593,119 @@ const ChartEngine = (() => {
     ctx.fillText(gauge.label, cx, cy + radius + 16);
   }
 
+  function renderPhaseSpaceChart(canvas, results) {
+    const { ctx, w, h } = setupCanvas(canvas);
+    const margin = { top: 36, right: 30, bottom: 40, left: 60 };
+
+    const N = results.N;
+    const lambda = results.lambda;
+    
+    // X Axis = Population (N)
+    let nMin = 0;
+    let nMax = 15e9; // 15 Billion max 
+    
+    // Y Axis = Lambda
+    let lMin = 0;
+    let lMax = Math.max(results.params.lambda_crit * 1.5, 2.0);
+
+    const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
+      nMin, nMax,
+      lMin, lMax, {
+        title: 'Espaço de Fase: N vs λ (Trajetória de Atração)',
+        xLabel: 'População (N)',
+        yLabel: 'Entropia (λ)',
+        yFormat: v => v.toFixed(2),
+        yTicks: 6,
+        xTicks: 6
+      });
+
+    // Draw Attractor Zones
+    // Safe Zone (Green) - Lambda < Crit
+    const yCrit = mapY(results.params.lambda_crit);
+    const yBot = mapY(lMin);
+    ctx.fillStyle = 'rgba(16,185,129,0.03)';
+    ctx.fillRect(margin.left, yCrit, plotW, yBot - yCrit);
+    
+    // Collapse Zone (Red) - Lambda > Crit
+    const yTop = mapY(lMax);
+    ctx.fillStyle = 'rgba(239,68,68,0.05)';
+    ctx.fillRect(margin.left, yTop, plotW, yCrit - yTop);
+
+    // Draw lambda_crit line horizontally
+    drawThreshold(ctx, mapX, mapY, nMin, nMax, results.params.lambda_crit, THEME.red, 'λ_crit', plotW, margin);
+
+    // Draw the Trajectory (Phase Orbit)
+    ctx.strokeStyle = THEME.purple;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    
+    ctx.beginPath();
+    ctx.moveTo(mapX(N[0]), mapY(lambda[0]));
+    
+    // Draw line with gradient-like fading by segmenting it
+    for (let i = 1; i < N.length; i += 2) {
+      const x = mapX(N[i]);
+      const y = mapY(lambda[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Glow
+    ctx.save();
+    ctx.shadowColor = THEME.purple;
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.restore();
+
+    // Start point marker (1970)
+    ctx.fillStyle = THEME.sky;
+    ctx.beginPath();
+    ctx.arc(mapX(N[0]), mapY(lambda[0]), 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = THEME.text;
+    ctx.font = '10px Inter';
+    ctx.fillText('1970', mapX(N[0]) - 15, mapY(lambda[0]) + 15);
+
+    // End point marker (2100)
+    const lastIdx = N.length - 1;
+    ctx.fillStyle = lambda[lastIdx] >= results.params.lambda_crit ? THEME.red : THEME.emerald;
+    ctx.beginPath();
+    ctx.arc(mapX(N[lastIdx]), mapY(lambda[lastIdx]), 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Glow end marker
+    ctx.save();
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.restore();
+    
+    ctx.fillStyle = THEME.textBright;
+    ctx.fillText('2100', mapX(N[lastIdx]) + 15, mapY(lambda[lastIdx]) + 5);
+
+    // Label the zones
+    ctx.fillStyle = 'rgba(16,185,129,0.3)';
+    ctx.font = 'bold 12px Inter';
+    ctx.fillText('Atrator Estável', margin.left + plotW / 2, mapY(lMin + (results.params.lambda_crit - lMin)/2));
+    
+    ctx.fillStyle = 'rgba(239,68,68,0.3)';
+    ctx.fillText('Zona de Colapso (Ruptura)', margin.left + plotW / 2, mapY(results.params.lambda_crit + (lMax - results.params.lambda_crit)/2));
+  }
+
   // ── Public API ────────────────────────────────────────────────────
   function renderAll(results) {
     const c1 = document.getElementById('chart-lambda');
     const c2 = document.getElementById('chart-population');
     const c3 = document.getElementById('chart-degradation');
     const c4 = document.getElementById('chart-dashboard');
+    const c5 = document.getElementById('chart-phasespace');
 
     if (c1) renderLambdaChart(c1, results);
     if (c2) renderPopulationChart(c2, results);
     if (c3) renderDegradationChart(c3, results);
     if (c4) renderDashboard(c4, results);
+    if (c5) renderPhaseSpaceChart(c5, results);
   }
 
   // Tooltip tracking

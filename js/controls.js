@@ -69,6 +69,8 @@ const Controls = (() => {
   let currentScenarioId = 'S2';
   let customEndpoints = {};
   let onChangeCallback = null;
+  let currentRegulators = { gov: 0, deg: 0 };
+  let currentShocks = [];
 
   /**
    * Initialize controls.
@@ -88,6 +90,7 @@ const Controls = (() => {
     buildCustomSliders();
     buildExportButton();
     setupSidebarToggle();
+    buildRegulatorAndShocks();
   }
 
   /**
@@ -301,6 +304,54 @@ const Controls = (() => {
   }
 
   /**
+   * Build regulators and shock buttons
+   */
+  function buildRegulatorAndShocks() {
+    const regGov = document.getElementById('reg-gov');
+    const regGovVal = document.getElementById('reg-gov-val');
+    const regDeg = document.getElementById('reg-deg');
+    const regDegVal = document.getElementById('reg-deg-val');
+    const btnReset = document.getElementById('btn-reset-regulator');
+
+    if (regGov) {
+      regGov.addEventListener('input', () => {
+        currentRegulators.gov = parseFloat(regGov.value);
+        regGovVal.textContent = (currentRegulators.gov > 0 ? '+' : '') + currentRegulators.gov + '%';
+        triggerChange();
+      });
+    }
+    if (regDeg) {
+      regDeg.addEventListener('input', () => {
+        currentRegulators.deg = parseFloat(regDeg.value);
+        regDegVal.textContent = (currentRegulators.deg > 0 ? '+' : '') + currentRegulators.deg + '%';
+        triggerChange();
+      });
+    }
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        currentRegulators = { gov: 0, deg: 0 };
+        if(regGov) { regGov.value = 0; regGovVal.textContent = '0%'; }
+        if(regDeg) { regDeg.value = 0; regDegVal.textContent = '0%'; }
+        triggerChange();
+      });
+    }
+
+    const injectShock = (type) => {
+      // Injeta o choque num ano próximo do atual (ex: 2026) para visualização clara
+      currentShocks.push({ year: 2026 + Math.floor(Math.random() * 5), type: type });
+      triggerChange();
+    };
+
+    const btnPan = document.getElementById('btn-shock-pandemic');
+    const btnWar = document.getElementById('btn-shock-war');
+    const btnTech = document.getElementById('btn-shock-tech');
+
+    if (btnPan) btnPan.addEventListener('click', () => injectShock('pandemic'));
+    if (btnWar) btnWar.addEventListener('click', () => injectShock('war'));
+    if (btnTech) btnTech.addEventListener('click', () => injectShock('tech'));
+  }
+
+  /**
    * Setup sidebar toggle.
    */
   function setupSidebarToggle() {
@@ -319,6 +370,16 @@ const Controls = (() => {
    */
   function resetParams() {
     currentParams = Object.assign({}, StructuralEntropyModel.DEFAULT_PARAMS);
+    currentShocks = [];
+    
+    // Reset regulators
+    currentRegulators = { gov: 0, deg: 0 };
+    const regGov = document.getElementById('reg-gov');
+    const regGovVal = document.getElementById('reg-gov-val');
+    const regDeg = document.getElementById('reg-deg');
+    const regDegVal = document.getElementById('reg-deg-val');
+    if(regGov) { regGov.value = 0; regGovVal.textContent = '0%'; }
+    if(regDeg) { regDeg.value = 0; regDegVal.textContent = '0%'; }
 
     // Update all sliders
     PARAM_DEFS.forEach(group => {
@@ -376,6 +437,14 @@ const Controls = (() => {
     return currentScenarioId;
   }
 
+  function getRegulators() {
+    return currentRegulators;
+  }
+
+  function getShocks() {
+    return currentShocks;
+  }
+
   // Debounced change trigger
   let changeTimeout = null;
   function triggerChange() {
@@ -392,6 +461,8 @@ const Controls = (() => {
     getParams,
     getCurrentScenario,
     getScenarioId,
+    getRegulators,
+    getShocks,
     selectScenario,
     resetParams,
     _lastResults: null
