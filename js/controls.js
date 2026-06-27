@@ -13,7 +13,7 @@ const Controls = (() => {
   const PARAM_DEFS = [
     { group: 'Simulação', params: [
       { key: 't_start', label: 'Ano Inicial', min: 1900, max: 2024, step: 1, unit: '' },
-      { key: 't_end',   label: 'Ano Final', min: 2050, max: 2200, step: 1, unit: '' },
+      { key: 't_end',   label: 'Ano Final', min: 2030, max: 2300, step: 1, unit: '' },
     ]},
     { group: 'Dinâmica Populacional', params: [
       { key: 'r_N',   label: 'r_N (taxa de crescimento)',   min: 0, max: 0.05,  step: 0.001, unit: '' },

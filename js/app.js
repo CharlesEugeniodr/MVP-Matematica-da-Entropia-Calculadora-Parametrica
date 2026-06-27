@@ -421,6 +421,74 @@ const App = (() => {
     }
 
     html += `</tbody></table>`;
+
+    // ── Hindcast Calibration ────────────────────────────────────────
+    if (typeof RealData !== 'undefined') {
+      const cal = RealData.runCalibration(results);
+      const scoreColor = cal.score >= 70 ? 'var(--emerald)' : cal.score >= 40 ? 'var(--amber)' : 'var(--red)';
+      
+      html += `
+        <h3 style="margin-top: 1.5rem; color:var(--cyan);">🎯 Calibração Hindcast (Modelo vs Realidade ${results.params.t_start}–${new Date().getFullYear()})</h3>
+        <div class="calibration-score" style="text-align:center; margin:12px 0;">
+          <span style="font-size:2rem; font-weight:800; color:${scoreColor};">${cal.score}%</span>
+          <div style="font-size:0.75rem; color:var(--text-secondary);">Índice de Conformidade</div>
+        </div>
+        <table class="audit-table">
+          <thead>
+            <tr><th>Variável</th><th>RMSE</th><th>R²</th><th>Fonte</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>População (Bi)</strong></td>
+              <td style="color:${cal.population.rmse < 0.5 ? 'var(--emerald)' : 'var(--red)'}">${cal.population.rmse.toFixed(3)}</td>
+              <td>${cal.population.r2.toFixed(3)}</td>
+              <td>World Bank / UN</td>
+            </tr>
+            <tr>
+              <td><strong>Anomalia Térmica (°C)</strong></td>
+              <td style="color:${cal.temperature.rmse < 0.3 ? 'var(--emerald)' : 'var(--red)'}">${cal.temperature.rmse.toFixed(3)}</td>
+              <td>${cal.temperature.r2.toFixed(3)}</td>
+              <td>NASA GISS</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+          RMSE = Root Mean Square Error (menor = melhor) · R² = Coeficiente de Determinação (1.0 = perfeito)
+        </div>
+      `;
+
+      // ── Reference Model Comparison ────────────────────────────────
+      html += `
+        <h3 style="margin-top: 1.5rem; color:var(--purple);">📊 Comparação com Modelos Estabelecidos</h3>
+        <table class="audit-table">
+          <thead>
+            <tr><th>Modelo</th><th>Pop. 2100</th><th>ΔT 2100</th><th>Nosso Modelo</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>DICE</strong> (Nordhaus, Nobel 2018)</td>
+              <td>10.9 Bi</td>
+              <td>+3.1°C</td>
+              <td rowspan="3" style="text-align:center; font-size:1.1rem; font-weight:700;">
+                ${(results.Nn[tL] + results.Ns[tL]).toFixed(2)} Bi<br>
+                <span style="font-size:0.8rem; color:var(--text-secondary);">+${results.deltaT[tL].toFixed(2)}°C</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>World3</strong> (Meadows, 1972)</td>
+              <td>4.5 Bi (colapso)</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>HANDY</strong> (NASA/Motesharrei, 2014)</td>
+              <td>Colapso ~2050</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
+
     wrapper.innerHTML = html;
   }
 

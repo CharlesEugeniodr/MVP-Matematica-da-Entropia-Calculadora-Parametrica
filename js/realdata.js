@@ -369,6 +369,175 @@ const RealData = (() => {
     { name: 'Sahel', nameEn: 'Sahel', threshold: 2.0, lat: 15, lon: 10, currentStress: 0.60 }
   ];
 
+  // ══════════════════════════════════════════════════════════════════
+  // 5. REAL POPULATION DATA (World Bank)
+  // ══════════════════════════════════════════════════════════════════
+  const WORLD_POPULATION = [
+    { year: 1970, value: 3.70 },
+    { year: 1975, value: 4.07 },
+    { year: 1980, value: 4.43 },
+    { year: 1985, value: 4.84 },
+    { year: 1990, value: 5.28 },
+    { year: 1995, value: 5.69 },
+    { year: 2000, value: 6.11 },
+    { year: 2005, value: 6.51 },
+    { year: 2010, value: 6.92 },
+    { year: 2015, value: 7.35 },
+    { year: 2020, value: 7.79 },
+    { year: 2023, value: 8.05 },
+    { year: 2024, value: 8.12 }
+  ];
+
+  // ══════════════════════════════════════════════════════════════════
+  // 6. HINDCAST CALIBRATION
+  // Compare model output (1970-2024) against real historical data
+  // ══════════════════════════════════════════════════════════════════
+  function runCalibration(modelResults) {
+    const currentYear = new Date().getFullYear();
+    const metrics = {
+      population: { predicted: [], actual: [], years: [], rmse: 0, r2: 0 },
+      temperature: { predicted: [], actual: [], years: [], rmse: 0, r2: 0 },
+      score: 0
+    };
+
+    for (let i = 0; i < modelResults.length; i++) {
+      const t = modelResults.time[i];
+      if (t > currentYear) break;
+      if (t % 5 !== 0 && t !== currentYear) continue; // Sample every 5 years
+
+      // Population (model outputs Nn+Ns in billions)
+      const modelPop = modelResults.Nn[i] + modelResults.Ns[i];
+      const realPop = interpolateHistorical(WORLD_POPULATION, t);
+      metrics.population.predicted.push(modelPop);
+      metrics.population.actual.push(realPop);
+      metrics.population.years.push(t);
+
+      // Temperature (model outputs deltaT)
+      const modelTemp = modelResults.deltaT[i];
+      const realTemp = interpolateHistorical(TEMPERATURE_ANOMALY, t);
+      metrics.temperature.predicted.push(modelTemp);
+      metrics.temperature.actual.push(realTemp);
+      metrics.temperature.years.push(t);
+    }
+
+    // Compute RMSE and R²
+    metrics.population.rmse = computeRMSE(metrics.population.predicted, metrics.population.actual);
+    metrics.population.r2 = computeR2(metrics.population.predicted, metrics.population.actual);
+    metrics.temperature.rmse = computeRMSE(metrics.temperature.predicted, metrics.temperature.actual);
+    metrics.temperature.r2 = computeR2(metrics.temperature.predicted, metrics.temperature.actual);
+
+    // Overall calibration score (0-100)
+    const popScore = Math.max(0, 100 - (metrics.population.rmse / 0.5) * 100); // <0.5B error = 100
+    const tempScore = Math.max(0, 100 - (metrics.temperature.rmse / 0.5) * 100); // <0.5°C error = 100
+    metrics.score = Math.round((popScore * 0.6) + (tempScore * 0.4));
+
+    return metrics;
+  }
+
+  function computeRMSE(predicted, actual) {
+    if (predicted.length === 0) return 0;
+    let sum = 0;
+    for (let i = 0; i < predicted.length; i++) {
+      sum += Math.pow(predicted[i] - actual[i], 2);
+    }
+    return Math.sqrt(sum / predicted.length);
+  }
+
+  function computeR2(predicted, actual) {
+    if (predicted.length < 2) return 0;
+    const meanActual = actual.reduce((a, b) => a + b, 0) / actual.length;
+    let ssTot = 0, ssRes = 0;
+    for (let i = 0; i < predicted.length; i++) {
+      ssTot += Math.pow(actual[i] - meanActual, 2);
+      ssRes += Math.pow(actual[i] - predicted[i], 2);
+    }
+    return ssTot === 0 ? 0 : 1 - (ssRes / ssTot);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 7. SENSITIVITY ANALYSIS (Monte Carlo on w1-w7)
+  // ══════════════════════════════════════════════════════════════════
+  function runSensitivityAnalysis(baseParams, numTrials = 200) {
+    const weights = ['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7'];
+    const results = {};
+    
+    weights.forEach(w => {
+      results[w] = { deltas: [], lambdaChanges: [] };
+    });
+
+    const baseResult = StructuralEntropyModel.simulate(baseParams);
+    const baseLambdaFinal = baseResult.lambda[baseResult.length - 1];
+
+    for (let trial = 0; trial < numTrials; trial++) {
+      weights.forEach(w => {
+        const perturbedParams = { ...baseParams };
+        const perturbation = (Math.random() - 0.5) * 0.1; // ±5% perturbation
+        perturbedParams[w] = Math.max(0, baseParams[w] + perturbation);
+        
+        const perturbedResult = StructuralEntropyModel.simulate(perturbedParams);
+        const perturbedLambda = perturbedResult.lambda[perturbedResult.length - 1];
+        
+        results[w].deltas.push(perturbation);
+        results[w].lambdaChanges.push(perturbedLambda - baseLambdaFinal);
+      });
+    }
+
+    // Compute sensitivity index (absolute mean change per unit perturbation)
+    const sensitivity = {};
+    weights.forEach(w => {
+      const changes = results[w].lambdaChanges;
+      const avgAbsChange = changes.reduce((a, b) => a + Math.abs(b), 0) / changes.length;
+      const avgAbsDelta = results[w].deltas.reduce((a, b) => a + Math.abs(b), 0) / results[w].deltas.length;
+      sensitivity[w] = {
+        index: avgAbsDelta > 0 ? avgAbsChange / avgAbsDelta : 0,
+        avgImpact: avgAbsChange,
+        label: w,
+        baseValue: baseParams[w]
+      };
+    });
+
+    return { weights: sensitivity, baseLambda: baseLambdaFinal, trials: numTrials };
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 8. REFERENCE MODEL TRAJECTORIES (DICE, World3, HANDY)
+  // Published projections for overlay comparison
+  // ══════════════════════════════════════════════════════════════════
+  const REFERENCE_MODELS = {
+    DICE: {
+      name: 'DICE (Nordhaus, 2018)',
+      description: 'Dynamic Integrated model of Climate and Economy',
+      temperature: [
+        { year: 2020, value: 1.1 }, { year: 2030, value: 1.4 },
+        { year: 2050, value: 2.0 }, { year: 2070, value: 2.5 },
+        { year: 2100, value: 3.1 }
+      ],
+      population: [
+        { year: 2020, value: 7.8 }, { year: 2050, value: 9.7 },
+        { year: 2100, value: 10.9 }
+      ]
+    },
+    World3: {
+      name: 'World3 (Meadows, 1972/2004)',
+      description: 'Limits to Growth — Business as Usual',
+      population: [
+        { year: 1970, value: 3.7 }, { year: 1980, value: 4.4 },
+        { year: 1990, value: 5.3 }, { year: 2000, value: 6.1 },
+        { year: 2010, value: 7.0 }, { year: 2020, value: 7.8 },
+        { year: 2030, value: 8.4 }, { year: 2040, value: 8.6 },
+        { year: 2050, value: 8.2 }, { year: 2060, value: 7.5 },
+        { year: 2070, value: 6.5 }, { year: 2080, value: 5.8 },
+        { year: 2100, value: 4.5 }
+      ]
+    },
+    HANDY: {
+      name: 'HANDY (Motesharrei, 2014)',
+      description: 'Human And Nature DYnamics — Unequal Society',
+      collapseYear: 2050,
+      recoveryYear: 2120
+    }
+  };
+
   // ── Public API ───────────────────────────────────────────────────
   return {
     fetchEarthquakes,
@@ -377,12 +546,16 @@ const RealData = (() => {
     getHistoricalData,
     interpolateHistorical,
     buildPlanetaryTimeSeries,
+    runCalibration,
+    runSensitivityAnalysis,
     TEMPERATURE_ANOMALY,
     CO2_PPM,
     FOREST_COVER,
     SEISMIC_EVENTS,
     HURRICANES_CAT4,
-    TIPPING_POINTS
+    WORLD_POPULATION,
+    TIPPING_POINTS,
+    REFERENCE_MODELS
   };
 
 })();
