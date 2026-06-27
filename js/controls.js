@@ -339,6 +339,7 @@ const Controls = (() => {
     const injectShock = (type) => {
       // Injeta o choque num ano próximo do atual (ex: 2026) para visualização clara
       currentShocks.push({ year: 2026 + Math.floor(Math.random() * 5), type: type });
+      if (typeof AudioEngine !== 'undefined') AudioEngine.playShockAlert(type);
       triggerChange();
     };
 

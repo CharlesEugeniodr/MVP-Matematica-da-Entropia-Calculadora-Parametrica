@@ -41,10 +41,47 @@ const App = (() => {
 
     setupEducationalModals();
 
+    // Actions
+    const audioBtn = document.getElementById('audio-btn');
+    if (audioBtn) {
+      audioBtn.addEventListener('click', () => {
+        if (typeof AudioEngine !== 'undefined') {
+          const isOn = AudioEngine.toggle();
+          audioBtn.classList.toggle('on', isOn);
+          audioBtn.textContent = isOn ? '🔊 Som: ON' : '🔈 Som: OFF';
+        }
+      });
+    }
+
+    const pdfBtn = document.getElementById('pdf-btn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', generatePDF);
+    }
+
     console.log('%c🌀 Calculadora de Entropia Estrutural', 
       'color: #06b6d4; font-size: 16px; font-weight: bold;');
-    console.log('%cModelo ODE com RK4 • 5 cenários • 1970–2100', 
+    console.log('%cPacote de Imersão: Audio, PDF, SVG Map e Glitch', 
       'color: #94a3b8; font-size: 11px;');
+  }
+
+  /**
+   * Gerador de Laudo Científico PDF (IPCC-style)
+   */
+  function generatePDF() {
+    if (typeof html2pdf === 'undefined') {
+      alert("Biblioteca de PDF carregando. Tente novamente em instantes.");
+      return;
+    }
+    const element = document.querySelector('.main-container');
+    const scenarioName = Controls.getCurrentScenario().name;
+    const opt = {
+      margin:       0.3,
+      filename:     `Laudo_Cientifico_IPCC_${scenarioName.replace(/ /g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
   }
 
   /**
@@ -267,6 +304,35 @@ const App = (() => {
   }
 
   /**
+   * Global Visual & Audio FX 
+   */
+  function updateVisualFX(lambda, lambda_crit, deltaT) {
+    // 1. Audio
+    if (typeof AudioEngine !== 'undefined') {
+      AudioEngine.updateTension(lambda, lambda_crit);
+    }
+
+    // 2. Glitch Effect
+    if (lambda >= lambda_crit) {
+      document.body.classList.add('glitch-critical');
+    } else {
+      document.body.classList.remove('glitch-critical');
+    }
+
+    // 3. SVG Heatmap Coloring
+    const equator = document.querySelectorAll('.world-map-svg .equator');
+    const north = document.querySelectorAll('.world-map-svg .north');
+    
+    // deltaT varies roughly 1.0 to 5.0
+    const heatRatio = Math.max(0, Math.min((deltaT - 1) / 4, 1));
+    const hueEq = 220 - (heatRatio * 220); // Blue (220) to Red (0)
+    const hueNo = 220 - (heatRatio * 150); // Blue to Green/Yellow (70)
+    
+    equator.forEach(el => el.style.fill = `hsl(${hueEq}, 70%, 35%)`);
+    north.forEach(el => el.style.fill = `hsl(${hueNo}, 40%, 25%)`);
+  }
+
+  /**
    * Start the Live Atomic Clock and Catastrophe Monitor Feed
    */
   function startLiveMonitor(results) {
@@ -334,12 +400,17 @@ const App = (() => {
       const fraction = (nowMs - startOfThisYear) / msInYear;
       
       const currentLambda = lambda1 + ((lambda2 - lambda1) * fraction);
+      const deltaT1 = results.deltaT[idx];
+      const deltaT2 = results.deltaT[idx+1];
+      const currentDeltaT = deltaT1 + ((deltaT2 - deltaT1) * fraction);
       
       // Impostômetro trick: fast-spinning noisy fraction to simulate quantum/chaotic micro-fluctuations
       const noise = (Math.random() * 0.000000009); 
       
       const displayVal = (currentLambda + noise).toFixed(9);
       clockDisplay.textContent = displayVal;
+
+      updateVisualFX(currentLambda, crit, currentDeltaT);
       
     }, 50);
   }

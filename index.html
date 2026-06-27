@@ -7,6 +7,8 @@
   <meta name="description" content="Simulador interativo do modelo matemático de Entropia Estrutural — dinâmica de sistemas socioambientais complexos.">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌀</text></svg>">
+  <!-- Bibliotecas Externas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -73,9 +75,17 @@
 
     <!-- Actions bar -->
     <div class="actions-bar">
-      <button class="export-btn" id="export-btn">
-        📊 Relatório de Auditoria de Cenário (.csv)
-      </button>
+      <div class="action-left">
+        <button class="export-btn" id="export-btn" title="Exportar dados brutos do cenário">
+          📊 CSV
+        </button>
+        <button class="export-btn pdf-btn" id="pdf-btn" title="Gerar Laudo Científico IPCC para Impressão">
+          📄 Laudo PDF
+        </button>
+        <button class="export-btn audio-btn" id="audio-btn" title="Ativar Sonorização de Tensão Sistêmica">
+          🔈 Som: OFF
+        </button>
+      </div>
       <span class="simulation-info" id="sim-info">
         Pronto para simular
       </span>
@@ -94,6 +104,23 @@
       </div>
       <div class="chart-card" id="card-dashboard">
         <canvas id="chart-dashboard"></canvas>
+      </div>
+      <div class="chart-card map-card" id="card-map">
+        <!-- Mapa Global Termodinâmico em SVG Simples -->
+        <div class="map-title">Termodinâmica Global (Stress Climático)</div>
+        <svg viewBox="0 0 1000 500" class="world-map-svg" id="world-map">
+          <!-- Américas -->
+          <path class="map-region north" d="M 200 100 Q 250 50 300 100 Q 280 150 250 200 Q 200 150 200 100 Z"/>
+          <path class="map-region equator" d="M 250 200 Q 280 250 350 300 Q 300 350 260 400 Q 220 300 250 200 Z"/>
+          <!-- Europa/África -->
+          <path class="map-region north" d="M 450 80 Q 550 50 600 120 Q 550 180 480 150 Z"/>
+          <path class="map-region equator" d="M 450 150 Q 550 200 550 350 Q 480 400 420 300 Q 400 200 450 150 Z"/>
+          <!-- Ásia/Oceania -->
+          <path class="map-region north" d="M 600 80 Q 800 20 900 150 Q 800 250 650 200 Z"/>
+          <path class="map-region equator" d="M 700 250 Q 850 250 900 350 Q 800 400 700 350 Z"/>
+          <!-- Equador Line -->
+          <line x1="0" y1="250" x2="1000" y2="250" class="equator-line"/>
+        </svg>
       </div>
       <div class="chart-card phase-space-card" id="card-phasespace">
         <canvas id="chart-phasespace"></canvas>
@@ -142,6 +169,7 @@
   </footer>
 
   <!-- ═══ Scripts ══════════════════════════════════════════════════ -->
+  <script src="js/audio.js"></script>
   <script src="js/model.js"></script>
   <script src="js/scenarios.js"></script>
   <script src="js/charts.js"></script>
