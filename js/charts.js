@@ -481,7 +481,7 @@ const ChartEngine = (() => {
     // Get final values (year 2100)
     const lastIdx = results.length - 1;
     const finalLambda = results.lambda[lastIdx];
-    const finalN      = results.N[lastIdx];
+    const finalN      = results.Nn[lastIdx] + results.Ns[lastIdx];
     const finalKeff   = results.Keff[lastIdx];
     const finalD      = results.D[lastIdx];
     const finalR      = results.R[lastIdx];
@@ -599,7 +599,10 @@ const ChartEngine = (() => {
     const { ctx, w, h } = setupCanvas(canvas);
     const margin = { top: 36, right: 30, bottom: 40, left: 60 };
 
-    const N = results.N;
+    const Nn = results.Nn;
+    const Ns = results.Ns;
+    const N_tot = new Float64Array(results.time.length);
+    for (let i = 0; i < results.time.length; i++) N_tot[i] = results.Nn[i] + results.Ns[i];
     const lambda = results.lambda;
     
     // X Axis = Population (N)
@@ -643,11 +646,11 @@ const ChartEngine = (() => {
     ctx.lineCap = 'round';
     
     ctx.beginPath();
-    ctx.moveTo(mapX(N[0]), mapY(lambda[0]));
+    ctx.moveTo(mapX(N_tot[0]), mapY(lambda[0]));
     
     // Draw line with gradient-like fading by segmenting it
-    for (let i = 1; i < N.length; i += 2) {
-      const x = mapX(N[i]);
+    for (let i = 1; i < N_tot.length; i += 2) {
+      const x = mapX(N_tot[i]);
       const y = mapY(lambda[i]);
       ctx.lineTo(x, y);
     }
@@ -663,17 +666,17 @@ const ChartEngine = (() => {
     // Start point marker (1970)
     ctx.fillStyle = THEME.sky;
     ctx.beginPath();
-    ctx.arc(mapX(N[0]), mapY(lambda[0]), 4, 0, Math.PI * 2);
+    ctx.arc(mapX(N_tot[0]), mapY(lambda[0]), 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = THEME.text;
     ctx.font = '10px Inter';
-    ctx.fillText('1970', mapX(N[0]) - 15, mapY(lambda[0]) + 15);
+    ctx.fillText('1970', mapX(N_tot[0]) - 15, mapY(lambda[0]) + 15);
 
     // End point marker (2100)
-    const lastIdx = N.length - 1;
+    const lastIdx = N_tot.length - 1;
     ctx.fillStyle = lambda[lastIdx] >= results.params.lambda_crit ? THEME.red : THEME.emerald;
     ctx.beginPath();
-    ctx.arc(mapX(N[lastIdx]), mapY(lambda[lastIdx]), 6, 0, Math.PI * 2);
+    ctx.arc(mapX(N_tot[lastIdx]), mapY(lambda[lastIdx]), 6, 0, Math.PI * 2);
     ctx.fill();
     
     // Glow end marker
@@ -684,7 +687,7 @@ const ChartEngine = (() => {
     ctx.restore();
     
     ctx.fillStyle = THEME.textBright;
-    ctx.fillText('2100', mapX(N[lastIdx]) + 15, mapY(lambda[lastIdx]) + 5);
+    ctx.fillText('2100', mapX(N_tot[lastIdx]) + 15, mapY(lambda[lastIdx]) + 5);
 
     // Label the zones
     ctx.fillStyle = 'rgba(16,185,129,0.3)';
@@ -744,8 +747,9 @@ const ChartEngine = (() => {
         html += `λ = ${results.lambda[idx].toFixed(4)}<br>`;
         html += `λ_crit = ${results.params.lambda_crit}`;
       } else if (chartType === 'population') {
-        html += `N = ${(results.N[idx] / 1e9).toFixed(3)}B<br>`;
-        html += `K_eff = ${(results.Keff[idx] / 1e9).toFixed(3)}B`;
+        html += `<strong>Ano ${(results.time[idx]).toFixed(0)}</strong><br>`;
+        html += `N_Total = ${((results.Nn[idx] + results.Ns[idx])).toFixed(3)}B<br>`;
+        html += `K_eff = ${(results.Keff[idx]).toFixed(3)}B`;
       } else if (chartType === 'degradation') {
         html += `D = ${(results.D[idx] * 100).toFixed(1)}%<br>`;
         html += `R = ${(results.R[idx] * 100).toFixed(1)}%`;
