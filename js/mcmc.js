@@ -309,9 +309,12 @@ var MCMCEngine = (function () {
     for (var t = 0; t < nT; t++) {
       var pops   = [], temps  = [], lambdas = [];
       for (var r = 0; r < runs.length; r++) {
-        pops.push(runs[r].population[t]);
-        temps.push(runs[r].temperature[t]);
-        lambdas.push(runs[r].lambda[t]);
+        var p = (runs[r].Nn[t] || 0) + (runs[r].Ns[t] || 0);
+        pops.push(isFinite(p) ? p : 0);
+        var tp = runs[r].deltaT[t] || 0;
+        temps.push(isFinite(tp) ? tp : 0);
+        var lm = runs[r].lambda[t] || 0;
+        lambdas.push(isFinite(lm) ? lm : 0);
       }
       pops.sort(function (a, b) { return a - b; });
       temps.sort(function (a, b) { return a - b; });

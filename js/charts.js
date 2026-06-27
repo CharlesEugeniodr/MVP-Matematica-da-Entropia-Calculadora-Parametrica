@@ -193,6 +193,29 @@ const ChartEngine = (() => {
     ctx.fill();
   }
 
+  /**
+   * Draw uncertainty band (credible interval) between lo and hi arrays.
+   */
+  function drawBand(ctx, time, lo, hi, mapX, mapY, color) {
+    if (!lo || !hi || lo.length === 0) return;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    // Forward pass (upper bound)
+    let started = false;
+    for (let i = 0; i < time.length; i += 3) {
+      const x = mapX(time[i]);
+      const y = mapY(hi[i]);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    // Reverse pass (lower bound)
+    for (let i = time.length - 1; i >= 0; i -= 3) {
+      ctx.lineTo(mapX(time[i]), mapY(lo[i]));
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
   function drawThreshold(ctx, mapX, mapY, xMin, xMax, value, color, label, plotW, margin) {
     const y = mapY(value);
     ctx.strokeStyle = color;
@@ -270,7 +293,7 @@ const ChartEngine = (() => {
   }
 
   // ── Chart 1: λ(t) Pressure ────────────────────────────────────────
-  function renderLambdaChart(canvas, results) {
+  function renderLambdaChart(canvas, results, ensemble) {
     const { ctx, w, h } = setupCanvas(canvas);
     const margin = { top: 36, right: 16, bottom: 30, left: 52 };
 
@@ -334,6 +357,12 @@ const ChartEngine = (() => {
       ctx.fill();
     }
 
+    // ── Uncertainty Band (IC 95%) from MCMC ensemble ──────────────
+    if (ensemble && ensemble.ci95 && ensemble.time) {
+      drawBand(ctx, ensemble.time, ensemble.ci95.lambda_lo, ensemble.ci95.lambda_hi,
+        mapX, mapY, 'rgba(6,182,212,0.12)');
+    }
+
     // Main λ line
     drawLine(ctx, time, lambda, mapX, mapY, THEME.cyan, 2);
 
@@ -351,10 +380,12 @@ const ChartEngine = (() => {
       THEME.emerald, 'Recup.', margin, plotH);
 
     // Legend
-    drawLegend(ctx, [
+    const legendItems = [
       { color: THEME.cyan, label: 'λ(t)' },
       { color: THEME.red, label: 'λ_crit', dashed: true }
-    ], margin.left + 4, margin.top + plotH + 26);
+    ];
+    if (ensemble) legendItems.push({ color: 'rgba(6,182,212,0.3)', label: 'IC 95%' });
+    drawLegend(ctx, legendItems, margin.left + 4, margin.top + plotH + 26);
   }
 
   // ── Chart 2: N_tot(t) vs K_eff(t) ────────────────────────────────
@@ -915,6 +946,11 @@ const ChartEngine = (() => {
   }
 
   // ── Public API ────────────────────────────────────────────────────
+  // ── Stored ensemble data for uncertainty bands ──────────────────
+  let _ensembleData = null;
+
+  function setEnsemble(data) { _ensembleData = data; }
+
   function renderAll(results, planetaryData) {
     const c1 = document.getElementById('chart-lambda');
     const c2 = document.getElementById('chart-population');
@@ -923,7 +959,7 @@ const ChartEngine = (() => {
     const c5 = document.getElementById('chart-phasespace');
     const c6 = document.getElementById('chart-planetary');
 
-    if (c1) renderLambdaChart(c1, results);
+    if (c1) renderLambdaChart(c1, results, _ensembleData);
     if (c2) renderPopulationChart(c2, results);
     if (c3) renderDegradationChart(c3, results);
     if (c4) renderDashboard(c4, results);
@@ -999,6 +1035,7 @@ const ChartEngine = (() => {
 
   return {
     renderAll,
+    setEnsemble,
     attachTooltip
   };
 

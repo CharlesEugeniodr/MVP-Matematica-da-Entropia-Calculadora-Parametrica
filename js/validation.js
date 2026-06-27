@@ -93,8 +93,7 @@ const ValidationEngine = (function () {
   }
 
   function simulate(params) {
-    const model = new StructuralEntropyModel(params);
-    return model.run();
+    return StructuralEntropyModel.simulate(params);
   }
 
   /* ── crossValidate ───────────────────────────────────────────────────── */
@@ -272,53 +271,107 @@ const ValidationEngine = (function () {
   function getLambda2100(params) {
     try {
       const sim = simulate(params);
-      const idx = sim.years.indexOf(2100);
-      if (idx >= 0 && isFinite(sim.lambda[idx])) return sim.lambda[idx];
-      /* fallback: last lambda */
-      const last = sim.lambda[sim.lambda.length - 1];
-      return isFinite(last) ? last : 0;
+      if (!sim || !sim.time || !sim.lambda) return 0;
+      // Find closest index to year 2100
+      let bestIdx = sim.time.length - 1;
+      for (let i = 0; i < sim.time.length; i++) {
+        if (Math.abs(sim.time[i] - 2100) < 0.5) { bestIdx = i; break; }
+      }
+      const val = sim.lambda[bestIdx];
+      return isFinite(val) ? val : 0;
     } catch (_) { return 0; }
   }
 
   /**
-   * Simplified Sobol-like first-order sensitivity indices for free params.
+   * Sobol sensitivity analysis using the Saltelli (2010) estimator.
+   * Computes first-order (S1) and total-order (ST) indices.
+   * 
+   * Method:
+   *   - Generate two independent quasi-random matrices A and B (nSamples × k)
+   *   - For each parameter i, construct ABi = A with column i replaced by B's column i
+   *   - S1_i = Var_Xi[E(Y|Xi)] / Var(Y) ≈ (1/N) Σ yB * (yABi - yA) / Var(Y)
+   *   - ST_i = E[Var(Y|X~i)] / Var(Y) ≈ (1/2N) Σ (yA - yABi)² / Var(Y)
+   *
    * @param {Object} baseParams - Base parameter set.
-   * @param {number} [nSamples=500] - Number of Latin Hypercube samples per param.
-   * @returns {{ indices: Array<{ param: string, S1: number, ST_approx: number }>, totalVariance: number, nSamples: number }}
+   * @param {number} [nSamples=128] - Base sample size (total evaluations = N*(k+2)).
+   * @returns {{ indices: Array, totalVariance: number, nSamples: number, totalEvaluations: number }}
    */
   function computeSobolIndices(baseParams, nSamples) {
-    nSamples = nSamples || 500;
-    const perParamVariances = [];
+    nSamples = Math.min(nSamples || 128, 200); // cap for browser performance
+    const k = FREE_PARAMS.length;
 
-    /* one-at-a-time variances */
-    for (const fp of FREE_PARAMS) {
-      const samples = latinHypercube(nSamples, fp.lo, fp.hi);
-      const outputs = samples.map(val => {
-        const p = Object.assign({}, baseParams);
-        p[fp.key] = val;
-        return getLambda2100(p);
-      });
-      perParamVariances.push({ param: fp.key, variance: variance(outputs) });
+    // Generate quasi-random matrices A and B using Latin Hypercube
+    const A = [], B = [];
+    for (let j = 0; j < k; j++) {
+      A.push(latinHypercube(nSamples, FREE_PARAMS[j].lo, FREE_PARAMS[j].hi));
+      B.push(latinHypercube(nSamples, FREE_PARAMS[j].lo, FREE_PARAMS[j].hi));
     }
 
-    /* total variance: vary all simultaneously */
-    const allOutputs = [];
-    for (let i = 0; i < nSamples; i++) {
+    // Build parameter set from matrix row
+    function buildParams(matrix, row) {
       const p = Object.assign({}, baseParams);
-      for (const fp of FREE_PARAMS) {
-        p[fp.key] = fp.lo + Math.random() * (fp.hi - fp.lo);
+      for (let j = 0; j < k; j++) {
+        p[FREE_PARAMS[j].key] = matrix[j][row];
       }
-      allOutputs.push(getLambda2100(p));
+      return p;
     }
-    const totalVariance = variance(allOutputs) || 1e-30;
 
-    const indices = perParamVariances.map(pv => ({
-      param: pv.param,
-      S1: safeDiv(pv.variance, totalVariance),
-      ST_approx: safeDiv(pv.variance, totalVariance) /* OAT approximation */
-    }));
+    // Evaluate f(A) and f(B)
+    const yA = new Float64Array(nSamples);
+    const yB = new Float64Array(nSamples);
+    for (let i = 0; i < nSamples; i++) {
+      yA[i] = getLambda2100(buildParams(A, i));
+      yB[i] = getLambda2100(buildParams(B, i));
+    }
 
-    return { indices, totalVariance, nSamples };
+    // Compute f0² and total variance
+    let sumA = 0, sumA2 = 0;
+    for (let i = 0; i < nSamples; i++) {
+      sumA += yA[i];
+      sumA2 += yA[i] * yA[i];
+    }
+    const f0 = sumA / nSamples;
+    const totalVar = (sumA2 / nSamples) - (f0 * f0);
+    const safeVar = totalVar > 1e-30 ? totalVar : 1e-30;
+
+    // For each parameter, build ABi and compute S1, ST
+    const indices = [];
+    let totalEvaluations = 2 * nSamples;
+
+    for (let j = 0; j < k; j++) {
+      // ABi = A with column j replaced by B's column j
+      const yABi = new Float64Array(nSamples);
+      for (let i = 0; i < nSamples; i++) {
+        const p = Object.assign({}, baseParams);
+        for (let col = 0; col < k; col++) {
+          p[FREE_PARAMS[col].key] = (col === j) ? B[col][i] : A[col][i];
+        }
+        yABi[i] = getLambda2100(p);
+      }
+      totalEvaluations += nSamples;
+
+      // Saltelli S1 estimator: (1/N) * Σ yB[i] * (yABi[i] - yA[i])
+      let s1Num = 0;
+      for (let i = 0; i < nSamples; i++) {
+        s1Num += yB[i] * (yABi[i] - yA[i]);
+      }
+      const S1 = Math.max(0, (s1Num / nSamples) / safeVar);
+
+      // Saltelli ST estimator: (1/2N) * Σ (yA[i] - yABi[i])²
+      let stNum = 0;
+      for (let i = 0; i < nSamples; i++) {
+        stNum += (yA[i] - yABi[i]) ** 2;
+      }
+      const ST = Math.max(0, (stNum / (2 * nSamples)) / safeVar);
+
+      indices.push({
+        param: FREE_PARAMS[j].key,
+        S1: Math.min(1, S1),
+        ST: Math.min(1, ST)
+      });
+    }
+
+    return { indices, totalVariance: totalVar, nSamples, totalEvaluations };
   }
 
   /* ── public API ──────────────────────────────────────────────────────── */

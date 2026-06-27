@@ -190,10 +190,18 @@ const App = (() => {
             html += '<button id="btn-apply-mcmc" class="calibration-btn primary" style="margin-top:8px;">✅ Aplicar Mediana MCMC</button>';
             results.innerHTML = html;
 
+            // Generate ensemble for uncertainty bands
+            if (status) status.textContent = '📊 Gerando bandas de incerteza...';
+            const ensemble = MCMCEngine.generateEnsemble(mcmcResult.chain, 30);
+            if (ensemble && typeof ChartEngine !== 'undefined' && ChartEngine.setEnsemble) {
+              ChartEngine.setEnsemble(ensemble);
+            }
+            if (status) status.textContent = '✅ MCMC concluído com bandas de incerteza!';
+
             document.getElementById('btn-apply-mcmc').addEventListener('click', () => {
               Controls.setParams(mcmcResult.bestParams);
               runSimulation(mcmcResult.bestParams, Controls.getCurrentScenario());
-              if (status) status.textContent = '✅ Parâmetros MCMC aplicados!';
+              if (status) status.textContent = '✅ Parâmetros MCMC aplicados com IC 95%!';
             });
           }
           mcmcBtn.disabled = false;
@@ -278,28 +286,36 @@ const App = (() => {
         const results = document.getElementById('calibration-results');
         sobolBtn.disabled = true;
         sobolBtn.textContent = '⏳ Sobol...';
-        if (status) status.textContent = 'Calculando índices de Sobol (500 amostras × 8 params)...';
+        if (status) status.textContent = 'Saltelli (2010): matrizes A/B/ABi × 8 params...';
 
         setTimeout(() => {
           const baseParams = Controls.getParams();
-          const sobol = ValidationEngine.computeSobolIndices(baseParams, 200);
+          const sobol = ValidationEngine.computeSobolIndices(baseParams, 100);
           if (results) {
-            const sorted = sobol.indices.sort((a, b) => b.S1 - a.S1);
-            let html = '<h3 style="color:var(--amber);">📊 Índices de Sobol (Sensibilidade Global)</h3>';
-            html += `<p>Variância total de IFE₂₁₀₀: ${sobol.totalVariance.toFixed(6)} · ${sobol.nSamples} amostras</p>`;
+            const sorted = sobol.indices.sort((a, b) => b.ST - a.ST);
+            let html = '<h3 style="color:var(--amber);">📊 Sobol-Saltelli (Sensibilidade Global)</h3>';
+            html += `<p>Variância total: ${sobol.totalVariance.toFixed(6)} · ${sobol.totalEvaluations} avaliações do modelo</p>`;
+            html += '<table class="audit-table"><thead><tr><th>Parâmetro</th><th>S₁ (1ª ordem)</th><th>Sᴛ (Total)</th><th>Interação</th></tr></thead><tbody>';
+            sorted.forEach(s => {
+              const interaction = Math.max(0, s.ST - s.S1);
+              const interPct = (interaction * 100).toFixed(1);
+              const color = s.ST > 0.25 ? 'var(--red)' : s.ST > 0.10 ? 'var(--amber)' : 'var(--emerald)';
+              html += `<tr><td><strong>${s.param}</strong></td><td>${(s.S1*100).toFixed(1)}%</td><td style="color:${color};font-weight:700">${(s.ST*100).toFixed(1)}%</td><td>${interPct}%</td></tr>`;
+            });
+            html += '</tbody></table>';
             html += '<div class="sensitivity-bars">';
             sorted.forEach(s => {
-              const pct = Math.min(100, (s.S1 * 100)).toFixed(0);
+              const pct = Math.min(100, (s.ST * 100)).toFixed(0);
               const color = pct > 25 ? 'var(--red)' : pct > 10 ? 'var(--amber)' : 'var(--emerald)';
-              html += `<div class="sens-item"><span class="sens-label">${s.param}</span><div class="tp-bar"><div class="tp-fill" style="width:${pct}%;background:${color}"></div></div><span class="tp-pct" style="color:${color}">S₁=${(s.S1*100).toFixed(1)}%</span></div>`;
+              html += `<div class="sens-item"><span class="sens-label">${s.param}</span><div class="tp-bar"><div class="tp-fill" style="width:${pct}%;background:${color}"></div></div><span class="tp-pct" style="color:${color}">Sᴛ=${(s.ST*100).toFixed(1)}%</span></div>`;
             });
             html += '</div>';
-            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">S₁ = fração da variância explicada por cada parâmetro individualmente</div>';
+            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">S₁ = efeito direto · Sᴛ = efeito total (inclui interações) · Interação = Sᴛ - S₁</div>';
             results.innerHTML = html;
           }
           sobolBtn.disabled = false;
           sobolBtn.textContent = '📊 Sobol (Sensibilidade Global)';
-          if (status) status.textContent = '✅ Análise de Sobol concluída!';
+          if (status) status.textContent = '✅ Sobol-Saltelli concluído!';
         }, 50);
       });
     }
