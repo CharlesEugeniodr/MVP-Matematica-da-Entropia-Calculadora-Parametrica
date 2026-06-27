@@ -27,7 +27,7 @@ const App = (() => {
     }
 
     // Initialize UI controls
-    Controls.init(DEFAULT_PARAMS);
+    Controls.init(StructuralEntropyModel.DEFAULT_PARAMS);
     Controls.onScenarioChange(onParametersChanged);
     Controls.onParamChange(onParametersChanged);
     
