@@ -714,14 +714,24 @@ const ChartEngine = (() => {
   }
 
   // Tooltip tracking
+  const tooltipsAttached = {};
+  
   function attachTooltip(canvasId, results, chartType) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
     const tooltip = document.getElementById('tooltip');
     if (!tooltip) return;
+    
+    // Always store latest results on the canvas itself so event listener reads it dynamically
+    canvas._chartResults = results;
+    
+    if (tooltipsAttached[canvasId]) return;
+    tooltipsAttached[canvasId] = true;
 
     canvas.addEventListener('mousemove', (e) => {
+      const currentResults = canvas._chartResults;
+      if (!currentResults) return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const w = rect.width;
@@ -734,25 +744,25 @@ const ChartEngine = (() => {
       }
 
       const frac = (x - margin) / plotW;
-      const year = results.params.t_start + frac * (results.params.t_end - results.params.t_start);
-      const idx = Math.round(frac * (results.length - 1));
+      const year = currentResults.params.t_start + frac * (currentResults.params.t_end - currentResults.params.t_start);
+      const idx = Math.round(frac * (currentResults.length - 1));
 
-      if (idx < 0 || idx >= results.length) {
+      if (idx < 0 || idx >= currentResults.length) {
         tooltip.style.display = 'none';
         return;
       }
 
       let html = `<strong>${Math.round(year)}</strong><br>`;
       if (chartType === 'lambda') {
-        html += `λ = ${results.lambda[idx].toFixed(4)}<br>`;
-        html += `λ_crit = ${results.params.lambda_crit}`;
+        html += `λ = ${currentResults.lambda[idx].toFixed(4)}<br>`;
+        html += `λ_crit = ${currentResults.params.lambda_crit}`;
       } else if (chartType === 'population') {
-        html += `<strong>Ano ${(results.time[idx]).toFixed(0)}</strong><br>`;
-        html += `N_Total = ${((results.Nn[idx] + results.Ns[idx])).toFixed(3)}B<br>`;
-        html += `K_eff = ${(results.Keff[idx]).toFixed(3)}B`;
+        html += `<strong>Ano ${(currentResults.time[idx]).toFixed(0)}</strong><br>`;
+        html += `N_Total = ${((currentResults.Nn[idx] + currentResults.Ns[idx])).toFixed(3)}B<br>`;
+        html += `K_eff = ${(currentResults.Keff[idx]).toFixed(3)}B`;
       } else if (chartType === 'degradation') {
-        html += `D = ${(results.D[idx] * 100).toFixed(1)}%<br>`;
-        html += `R = ${(results.R[idx] * 100).toFixed(1)}%`;
+        html += `D = ${(currentResults.D[idx] * 100).toFixed(1)}%<br>`;
+        html += `R = ${(currentResults.R[idx] * 100).toFixed(1)}%`;
       }
 
       tooltip.innerHTML = html;

@@ -27,9 +27,7 @@ const App = (() => {
     }
 
     // Initialize UI controls
-    Controls.init(StructuralEntropyModel.DEFAULT_PARAMS);
-    Controls.onScenarioChange(onParametersChanged);
-    Controls.onParamChange(onParametersChanged);
+    Controls.init(onParametersChanged);
     
     const initialParams = Controls.getParams();
     const initialScenario = Controls.getCurrentScenario();
@@ -88,11 +86,6 @@ const App = (() => {
       }, 150);
     });
 
-    // Setup tooltips
-    ChartEngine.attachTooltip('chart-lambda', null, 'lambda');
-    ChartEngine.attachTooltip('chart-population', null, 'population');
-    ChartEngine.attachTooltip('chart-degradation', null, 'degradation');
-    ChartEngine.attachTooltip('chart-dashboard', null, 'dashboard');
   }
 
   /**
@@ -172,7 +165,7 @@ const App = (() => {
 
     // Run simulation
     try {
-      currentResults = StructuralEntropyModel.simulate(params, scenario, regulators, shocks);
+      currentResults = StructuralEntropyModel.simulate(params, shocks);
       Controls._lastResults = currentResults;
 
       const elapsed = (performance.now() - t0).toFixed(1);
