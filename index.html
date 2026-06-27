@@ -139,6 +139,15 @@
           <!-- Equador Line -->
           <line x1="0" y1="250" x2="1000" y2="250" class="equator-line"/>
         </svg>
+        <div id="thermal-info" class="thermal-info-panel"></div>
+        <div id="thermal-colorbar" class="thermal-colorbar"></div>
+        <div class="tipping-points-section">
+          <h5 data-i18n="tipping-title">🎯 Tipping Points Planetários</h5>
+          <div id="tipping-points" class="tipping-points-container"></div>
+        </div>
+      </div>
+      <div class="chart-card planetary-card" id="card-planetary">
+        <canvas id="chart-planetary"></canvas>
       </div>
       <div class="chart-card seismo-card" id="card-seismograph">
         <canvas id="chart-seismograph"></canvas>
@@ -207,13 +216,14 @@
   </aside>
 
   <!-- ═══ Scripts ══════════════════════════════════════════════════ -->
-  <script src="js/i18n.js?v=3.0"></script>
-  <script src="js/audio.js?v=3.0"></script>
-  <script src="js/model.js?v=3.0"></script>
-  <script src="js/scenarios.js?v=3.0"></script>
-  <script src="js/charts.js?v=3.0"></script>
-  <script src="js/controls.js?v=3.0"></script>
-  <script src="js/app.js?v=3.0"></script>
+  <script src="js/i18n.js?v=3.5"></script>
+  <script src="js/audio.js?v=3.5"></script>
+  <script src="js/realdata.js?v=3.5"></script>
+  <script src="js/model.js?v=3.5"></script>
+  <script src="js/scenarios.js?v=3.5"></script>
+  <script src="js/charts.js?v=3.5"></script>
+  <script src="js/controls.js?v=3.5"></script>
+  <script src="js/app.js?v=3.5"></script>
 
 </body>
 </html>

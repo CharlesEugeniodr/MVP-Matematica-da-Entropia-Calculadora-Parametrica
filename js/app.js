@@ -168,6 +168,13 @@ const App = (() => {
       currentResults = StructuralEntropyModel.simulate(params, scenario, shocks);
       Controls._lastResults = currentResults;
 
+      // Build planetary time series (real data + projections)
+      let planetaryData = null;
+      if (typeof RealData !== 'undefined') {
+        planetaryData = RealData.buildPlanetaryTimeSeries(currentResults);
+        currentResults._planetaryData = planetaryData;
+      }
+
       const elapsed = (performance.now() - t0).toFixed(1);
       updateSimInfo(elapsed, currentResults);
       updateAuditReport(currentResults);
@@ -179,13 +186,16 @@ const App = (() => {
       ChartEngine.attachTooltip('chart-dashboard', currentResults, 'dashboard');
 
       // Render with smooth transition
-      renderCharts(currentResults);
+      renderCharts(currentResults, planetaryData);
 
       // Trigger pulse animations on critical events
       triggerEventAnimations(currentResults);
       
       // Start Live Atomic Clock and Feed
       startLiveMonitor(currentResults);
+
+      // Fetch real news for GNN (async, non-blocking)
+      fetchRealNews();
 
     } catch (err) {
       console.error('Erro na simulação:', err);
@@ -197,12 +207,61 @@ const App = (() => {
   }
 
   /**
+   * Fetch real news from GDELT and update GNN ticker.
+   */
+  async function fetchRealNews() {
+    if (typeof RealData === 'undefined') return;
+    try {
+      const lang = typeof I18n !== 'undefined' ? I18n.getLanguage() : 'pt';
+      const articles = await RealData.fetchNews(lang);
+      if (articles && articles.length > 0) {
+        const gnn = document.getElementById('gnn-text');
+        if (gnn) {
+          const headlines = articles.slice(0, 8).map(a => `${a.title} (${a.source || 'GDELT'})`);
+          gnn.textContent = headlines.join(' ◆ ');
+        }
+      }
+      // Also fetch real events for the monitor
+      const earthquakes = await RealData.fetchEarthquakes();
+      const events = await RealData.fetchNaturalEvents();
+      updateRealMonitor(earthquakes, events);
+    } catch (e) {
+      console.warn('Real data fetch:', e.message);
+    }
+  }
+
+  /**
+   * Update catastrophe feed with real earthquake and event data.
+   */
+  function updateRealMonitor(earthquakes, events) {
+    const feed = document.getElementById('catastrophe-feed');
+    if (!feed) return;
+
+    let html = '';
+    if (earthquakes && earthquakes.length > 0) {
+      earthquakes.slice(0, 3).forEach(eq => {
+        const icon = eq.magnitude >= 6 ? '🔴' : eq.magnitude >= 5 ? '🟡' : '🟢';
+        html += `<div class="feed-item real-event">${icon} <strong>M${eq.magnitude.toFixed(1)}</strong> — ${eq.location}${eq.tsunami ? ' ⚠️ TSUNAMI' : ''}</div>`;
+      });
+    }
+    if (events && events.length > 0) {
+      events.slice(0, 3).forEach(ev => {
+        const icon = ev.category === 'Wildfires' ? '🔥' : ev.category === 'Volcanoes' ? '🌋' : ev.category === 'Severe Storms' ? '🌀' : '🌍';
+        html += `<div class="feed-item real-event">${icon} ${ev.title}</div>`;
+      });
+    }
+    if (html) {
+      feed.innerHTML = html + feed.innerHTML;
+    }
+  }
+
+  /**
    * Render all charts.
    */
-  function renderCharts(results) {
+  function renderCharts(results, planetaryData) {
     if (animationFrame) cancelAnimationFrame(animationFrame);
     animationFrame = requestAnimationFrame(() => {
-      ChartEngine.renderAll(results);
+      ChartEngine.renderAll(results, planetaryData || null);
     });
     
     if (typeof Seismograph !== 'undefined') {

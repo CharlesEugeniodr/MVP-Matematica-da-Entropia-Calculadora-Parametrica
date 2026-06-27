@@ -84,7 +84,20 @@ const I18n = (() => {
 
     // Phase space zone labels
     'zone-stable': { pt: 'Atrator Estável', en: 'Stable Attractor' },
-    'zone-collapse': { pt: 'Zona de Colapso (Ruptura)', en: 'Collapse Zone (Rupture)' }
+    'zone-collapse': { pt: 'Zona de Colapso (Ruptura)', en: 'Collapse Zone (Rupture)' },
+
+    // Planetary chart
+    'chart-planetary-title': { pt: 'Indicadores Planetários — Dados Reais + Projeções', en: 'Planetary Indicators — Real Data + Projections' },
+    'label-real-data': { pt: 'Dados Reais', en: 'Real Data' },
+    'label-projection': { pt: 'Projeção', en: 'Projection' },
+    'label-forest': { pt: 'Floresta (%)', en: 'Forest (%)' },
+    'label-hurricanes': { pt: 'Furacões 4+', en: 'Hurricanes 4+' },
+
+    // Thermal panel
+    'thermal-stable': { pt: '🟢 ESTÁVEL', en: '🟢 STABLE' },
+    'thermal-alert': { pt: '🟡 ALERTA', en: '🟡 ALERT' },
+    'thermal-critical': { pt: '🔴 CRÍTICO', en: '🔴 CRITICAL' },
+    'tipping-title': { pt: '🎯 Tipping Points Planetários', en: '🎯 Planetary Tipping Points' }
   };
 
   const newsFeeds = {

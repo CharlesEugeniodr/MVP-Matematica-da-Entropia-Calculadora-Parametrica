@@ -699,19 +699,240 @@ const ChartEngine = (() => {
     ctx.fillText(typeof I18n !== 'undefined' ? I18n.getText('zone-collapse') : 'Zona de Colapso (Ruptura)', margin.left + plotW / 2, mapY(results.params.lambda_crit + (lMax - results.params.lambda_crit)/2));
   }
 
+  // ── Chart 6: Planetary Behavior (Real Data + Projections) ──────
+  function renderPlanetaryChart(canvas, results, planetaryData) {
+    if (!planetaryData || !planetaryData.time || planetaryData.time.length === 0) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    const margin = { top: 36, right: 60, bottom: 30, left: 52 };
+    const plotW = w - margin.left - margin.right;
+    const plotH = h - margin.top - margin.bottom;
+
+    const time = planetaryData.time;
+    const tStart = time[0];
+    const tEnd = time[time.length - 1];
+    const currentYear = new Date().getFullYear();
+
+    // Title
+    const title = typeof I18n !== 'undefined' ? I18n.getText('chart-planetary-title') : 'Indicadores Planetários — Dados Reais + Projeções';
+    ctx.fillStyle = THEME.textBright;
+    ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, margin.left + plotW / 2, margin.top - 10);
+
+    // X grid
+    ctx.strokeStyle = THEME.gridLine;
+    ctx.lineWidth = 0.5;
+    ctx.font = '10px Inter, system-ui, sans-serif';
+    ctx.fillStyle = THEME.text;
+    ctx.textAlign = 'center';
+    const xTicks = 7;
+    for (let i = 0; i <= xTicks; i++) {
+      const frac = i / xTicks;
+      const x = margin.left + frac * plotW;
+      const val = tStart + frac * (tEnd - tStart);
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + plotH);
+      ctx.stroke();
+      ctx.fillText(Math.round(val).toString(), x, margin.top + plotH + 16);
+    }
+
+    // Axes
+    ctx.strokeStyle = THEME.axisLine;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + plotH);
+    ctx.lineTo(margin.left + plotW, margin.top + plotH);
+    ctx.stroke();
+
+    // Transition line (Real → Projection)
+    const transX = margin.left + ((currentYear - tStart) / (tEnd - tStart)) * plotW;
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(transX, margin.top);
+    ctx.lineTo(transX, margin.top + plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Label
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '9px Inter';
+    ctx.textAlign = 'center';
+    const realLabel = typeof I18n !== 'undefined' ? I18n.getText('label-real-data') : 'Dados Reais';
+    const projLabel = typeof I18n !== 'undefined' ? I18n.getText('label-projection') : 'Projeção';
+    ctx.fillText('◄ ' + realLabel, transX - 40, margin.top + 14);
+    ctx.fillText(projLabel + ' ►', transX + 40, margin.top + 14);
+
+    // Data series definitions (all normalized to 0-1 for multi-axis display)
+    const series = [
+      { data: planetaryData.temperature, label: 'ΔT (°C)', color: THEME.red, min: -0.2, max: 5 },
+      { data: planetaryData.co2, label: 'CO₂ (ppm)', color: '#a16207', min: 300, max: 600 },
+      { data: planetaryData.forest, label: typeof I18n !== 'undefined' ? I18n.getText('label-forest') : 'Floresta (%)', color: THEME.emerald, min: 15, max: 35 },
+      { data: planetaryData.hurricanes, label: typeof I18n !== 'undefined' ? I18n.getText('label-hurricanes') : 'Furacões 4+', color: THEME.amber, min: 0, max: 40 },
+      { data: planetaryData.lambda, label: 'λ (Entropia)', color: THEME.purple, min: 0, max: 2 }
+    ];
+
+    // Draw each line
+    series.forEach(s => {
+      if (!s.data || s.data.length === 0) return;
+      const mapX = (idx) => margin.left + ((time[idx] - tStart) / (tEnd - tStart)) * plotW;
+      const mapY = (val) => margin.top + plotH - ((val - s.min) / (s.max - s.min)) * plotH;
+
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = 1.8;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i < s.data.length; i += Math.max(1, Math.floor(s.data.length / 300))) {
+        const x = mapX(i);
+        const y = mapY(Math.max(s.min, Math.min(s.max, s.data[i])));
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Glow
+      ctx.save();
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = 4;
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Legend
+    const legY = margin.top + plotH + 24;
+    let legX = margin.left;
+    ctx.font = '9px Inter, system-ui, sans-serif';
+    series.forEach(s => {
+      ctx.fillStyle = s.color;
+      ctx.fillRect(legX, legY - 5, 10, 3);
+      legX += 13;
+      ctx.fillStyle = THEME.text;
+      ctx.textAlign = 'left';
+      ctx.fillText(s.label, legX, legY);
+      legX += ctx.measureText(s.label).width + 12;
+    });
+  }
+
+  // ── Enhanced Thermal Map ─────────────────────────────────────────
+  function renderThermalMap(containerId, results) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const lastIdx = results.length - 1;
+    const deltaT = results.deltaT[lastIdx];
+    const D = results.D[lastIdx];
+    const lambda = results.lambda[lastIdx];
+    const lambdaCrit = results.params.lambda_crit;
+
+    // Regional stress factors
+    const regions = container.querySelectorAll('.map-region');
+    regions.forEach(region => {
+      const isEquator = region.classList.contains('equator');
+      // Equatorial regions heat more, polar regions have different dynamics
+      const regionalStress = isEquator ? (deltaT * 1.3 + D * 0.5) : (deltaT * 0.8 + D * 0.3);
+      const normalizedStress = Math.min(1, regionalStress / 4);
+      
+      // Color gradient: green → yellow → orange → red → dark red
+      let r, g, b;
+      if (normalizedStress < 0.25) {
+        r = Math.round(40 + normalizedStress * 4 * 160);
+        g = Math.round(180 - normalizedStress * 4 * 40);
+        b = 80;
+      } else if (normalizedStress < 0.5) {
+        const t = (normalizedStress - 0.25) * 4;
+        r = Math.round(200 + t * 55);
+        g = Math.round(140 - t * 80);
+        b = Math.round(80 - t * 60);
+      } else if (normalizedStress < 0.75) {
+        const t = (normalizedStress - 0.5) * 4;
+        r = 255;
+        g = Math.round(60 - t * 60);
+        b = Math.round(20 - t * 20);
+      } else {
+        const t = (normalizedStress - 0.75) * 4;
+        r = Math.round(255 - t * 60);
+        g = 0;
+        b = 0;
+      }
+
+      region.style.fill = `rgb(${r},${g},${b})`;
+      region.style.opacity = 0.75 + normalizedStress * 0.25;
+      
+      // Pulsate critical regions
+      if (normalizedStress > 0.7) {
+        region.style.animation = 'thermalPulse 1.5s ease-in-out infinite alternate';
+      } else {
+        region.style.animation = 'none';
+      }
+    });
+
+    // Update thermal info panel
+    const infoPanel = document.getElementById('thermal-info');
+    if (infoPanel) {
+      const tempStr = deltaT.toFixed(2);
+      const statusKey = lambda >= lambdaCrit ? 'thermal-critical' : lambda >= lambdaCrit * 0.6 ? 'thermal-alert' : 'thermal-stable';
+      const statusDefault = lambda >= lambdaCrit ? '🔴 CRÍTICO' : lambda >= lambdaCrit * 0.6 ? '🟡 ALERTA' : '🟢 ESTÁVEL';
+      const status = typeof I18n !== 'undefined' ? I18n.getText(statusKey) : statusDefault;
+      
+      infoPanel.innerHTML = `
+        <div class="thermal-metric"><span class="thermal-label">ΔT</span><span class="thermal-value" style="color:${deltaT > 2 ? THEME.red : deltaT > 1.5 ? THEME.amber : THEME.emerald}">+${tempStr}°C</span></div>
+        <div class="thermal-metric"><span class="thermal-label">D</span><span class="thermal-value">${(D * 100).toFixed(1)}%</span></div>
+        <div class="thermal-metric"><span class="thermal-label">λ</span><span class="thermal-value">${lambda.toFixed(3)}</span></div>
+        <div class="thermal-status">${status}</div>
+      `;
+    }
+
+    // Update tipping points
+    const tpContainer = document.getElementById('tipping-points');
+    if (tpContainer && typeof RealData !== 'undefined') {
+      const lang = typeof I18n !== 'undefined' ? I18n.getLanguage() : 'pt';
+      let html = '';
+      RealData.TIPPING_POINTS.forEach(tp => {
+        const stress = tp.currentStress + (deltaT / tp.threshold) * 0.3;
+        const pct = Math.min(100, stress * 100);
+        const color = pct > 80 ? THEME.red : pct > 60 ? THEME.amber : THEME.emerald;
+        const name = lang === 'en' ? tp.nameEn : tp.name;
+        html += `<div class="tp-item"><span class="tp-name">${name}</span><div class="tp-bar"><div class="tp-fill" style="width:${pct}%;background:${color}"></div></div><span class="tp-pct" style="color:${color}">${pct.toFixed(0)}%</span></div>`;
+      });
+      tpContainer.innerHTML = html;
+    }
+  }
+
+  // ── Colorimetric Scale Bar ────────────────────────────────────────
+  function renderColorBar(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `
+      <div class="colorbar-gradient"></div>
+      <div class="colorbar-labels">
+        <span>0°C</span><span>1°C</span><span>2°C</span><span>3°C</span><span>4°C+</span>
+      </div>
+    `;
+  }
+
   // ── Public API ────────────────────────────────────────────────────
-  function renderAll(results) {
+  function renderAll(results, planetaryData) {
     const c1 = document.getElementById('chart-lambda');
     const c2 = document.getElementById('chart-population');
     const c3 = document.getElementById('chart-degradation');
     const c4 = document.getElementById('chart-dashboard');
     const c5 = document.getElementById('chart-phasespace');
+    const c6 = document.getElementById('chart-planetary');
 
     if (c1) renderLambdaChart(c1, results);
     if (c2) renderPopulationChart(c2, results);
     if (c3) renderDegradationChart(c3, results);
     if (c4) renderDashboard(c4, results);
     if (c5) renderPhaseSpaceChart(c5, results);
+    if (c6 && planetaryData) renderPlanetaryChart(c6, results, planetaryData);
+
+    // Enhanced thermal map
+    renderThermalMap('card-map', results);
+    renderColorBar('thermal-colorbar');
   }
 
   // Tooltip tracking
@@ -724,7 +945,6 @@ const ChartEngine = (() => {
     const tooltip = document.getElementById('tooltip');
     if (!tooltip) return;
     
-    // Always store latest results on the canvas itself so event listener reads it dynamically
     canvas._chartResults = results;
     
     if (tooltipsAttached[canvasId]) return;
@@ -758,7 +978,6 @@ const ChartEngine = (() => {
         html += `λ = ${currentResults.lambda[idx].toFixed(4)}<br>`;
         html += `λ_crit = ${currentResults.params.lambda_crit}`;
       } else if (chartType === 'population') {
-        html += `<strong>Ano ${(currentResults.time[idx]).toFixed(0)}</strong><br>`;
         html += `N_Total = ${((currentResults.Nn[idx] + currentResults.Ns[idx])).toFixed(3)}B<br>`;
         html += `K_eff = ${(currentResults.Keff[idx]).toFixed(3)}B`;
       } else if (chartType === 'degradation') {
