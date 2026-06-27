@@ -1,67 +1,98 @@
-# Calculadora de Entropia Estrutural (Fase 2)
+# IFE — Índice de Fragilidade Estrutural
+*Structural Fragility Index (SFI)*
+
+> *formerly: Calculadora de Entropia Estrutural*
+
+[![CI](https://github.com/CharlesEugeniodr/MVP-Matematica-da-Entropia-Calculadora-Parametrica/actions/workflows/ci.yml/badge.svg)](https://github.com/CharlesEugeniodr/MVP-Matematica-da-Entropia-Calculadora-Parametrica/actions)
 
 Um motor estocástico não-linear baseado em **Equações Diferenciais com Atraso (DDEs)** para modelar o colapso socioambiental global e os limites da resiliência planetária.
 
 ---
 
-## 🌀 A Filosofia do Modelo
+## 🌀 O Modelo
 
-Este modelo matemático rejeita a ideia de crescimento infinito. Em vez de tratar a civilização como uma entidade imune às leis da Termodinâmica, o motor calcula a **Entropia Estrutural** ($\lambda$) — o desgaste acumulado na malha de recursos da Terra gerado pela expansão demográfica e econômica.
+O IFE (λ) é uma **métrica composta de fragilidade sistêmica** que quantifica a distância de uma civilização ao ponto de colapso, baseada em:
 
-O sistema possui **Atratores Dinâmicos**:
-- **Atrator Estável:** A civilização se mantém dentro da Capacidade de Suporte Dinâmica ($K_{eff}$), controlando a Entropia e limitando a anomalia térmica ($\Delta T$).
-- **Colapso Sistêmico:** Se $\lambda$ ultrapassa o Limiar Crítico ($\lambda_{crit}$), ocorre a falência da capacidade de suporte e a rápida degradação do sistema, forçando uma correção brusca (e catastrófica) da população.
+$$\lambda = w_1 \frac{N}{K_{eff}} + w_2 D + w_3 \Delta T + w_4 U + w_5 I - w_6 (T \times G) - w_7 R$$
+
+Onde cada peso $w_i$ é calibrável por MCMC Bayesiano contra dados históricos reais (1970–2024).
+
+### Atratores Dinâmicos:
+- **Atrator Estável:** A civilização se mantém dentro da Capacidade de Suporte Dinâmica ($K_{eff}$)
+- **Colapso Sistêmico:** Se $\lambda > \lambda_{crit}$, ocorre falência da capacidade de suporte
 
 ---
 
-## ⚙️ Arquitetura do Motor (Fase 2)
-
-A Fase 2 adiciona densidade geopolítica e econômica ao motor:
+## ⚙️ Arquitetura (v4.0)
 
 ### 1. Assimetria Geopolítica (Norte vs Sul)
-A população humana foi dividida em duas variáveis interdependentes:
-- **$N_{n}$ (Norte Global):** Zonas de alta infraestrutura, que funcionam como asilo migratório.
-- **$N_{s}$ (Sul Global):** Zonas altamente expostas ao clima extremo e à falência hídrica/alimentar. Quando o Sul atinge um ponto de ruptura ($\lambda > 0.6$), a pressão migratória deforma as curvas populacionais em direção ao Norte.
+- **$N_n$ (Norte Global):** Alta infraestrutura, asilo migratório
+- **$N_s$ (Sul Global):** Exposição a clima extremo, pressão migratória quando λ > 0.6
 
-### 2. O Motor Capitalista ($E$)
-O sistema simula a **Economia Global (Trilhões de Dólares)**.
-O Capital ($E$) retroalimenta o uso da terra ($U$) e a queima de fósseis (aumentando a Anomalia Térmica $\Delta T$). Contudo, é o Capital que financia a **Agência Adaptativa**: se a civilização perceber a aproximação do colapso, ela tenta "queimar" capital para forçar Inovações Tecnológicas.
+### 2. Motor Capitalista ($E$)
+Economia global retroalimenta uso da terra e emissões, mas financia Agência Adaptativa.
 
-### 3. As Variáveis de Estado
-O solver numérico resolve 10 variáveis diferenciais acopladas:
-- `Nn(t)` e `Ns(t)`: Populações do Norte e do Sul
-- `E(t)`: Economia Capitalista Global
-- `K_eff(t)`: Capacidade de Suporte da Terra
-- `D(t)` e `R(t)`: Degradação Ambiental e Resiliência Planetária
-- `λ(t)`: Entropia Estrutural Acumulada
-- `ΔT(t)`: Anomalia Térmica (Aquecimento Global)
-- `U(t)`: Sobrecarga de Uso da Terra
-- `I(t)`: Desigualdade Estrutural Global
+### 3. 10 Variáveis de Estado (DDEs acopladas)
+`Nn(t)`, `Ns(t)`, `E(t)`, `K_eff(t)`, `D(t)`, `R(t)`, `λ(t)`, `ΔT(t)`, `U(t)`, `I(t)`
 
 ---
 
-## 🖥️ A Interface do Simulador
+## 🔬 Ferramentas Científicas (v4.0)
 
-O painel inclui monitoramento em tempo real (Painel de Colapso), suporte bilíngue, e as seguintes ferramentas:
+| Ferramenta | Descrição |
+|------------|-----------|
+| **MCMC Bayesiano** | Metropolis-Hastings com 3000 iterações, distribuições posteriores com IC 95% |
+| **AIC/BIC** | Comparação formal de 5 modelos (Linear → IFE Completo) |
+| **Validação Cruzada** | Treino 1970-2000, Teste 2000-2024 com Skill Score |
+| **Sobol** | Sensibilidade global baseada em variância |
+| **Auto-Calibração** | Grid search iterativo contra World Bank + NASA GISS |
+| **Dados Reais** | APIs: USGS, NASA EONET, GDELT + datasets históricos (GDP, Gini, CO₂, FAO) |
 
-- **Espaço de Fase Matemático:** Um gráfico mapeando o Atrator Caótico, demonstrando se a civilização orbita em segurança ou se está espiralando em direção ao Tipping Point.
-- **Sismógrafo Entrópico:** Um osciloscópio estocástico reagindo aos níveis de tensão da Entropia, registrando picos visuais durante Terremotos ou Tsunamis simulados pelo clima.
-- **Global News Network (GNN):** Ticker estocástico de notícias que escala do amarelo ao vermelho intenso conforme a Entropia sobe.
-- **Auditoria de Dados Densos:** Uma aba dedicada contendo a tabela de vetores paramétricos pre- e post-simulação, monitorando o ponto de colapso de forma científica e clara.
-- **Laudo IPCC Exportável:** Geração de um arquivo PDF denso contendo o histórico das oscilações, a leitura tabular dos impactos estruturais, e a exportação visual dos gráficos.
+---
+
+## 📊 Dados de Validação
+
+| Dataset | Fonte | Pontos |
+|---------|-------|--------|
+| População Mundial | World Bank | 13 |
+| Anomalia Térmica | NASA GISS | 14 |
+| PIB Mundial | World Bank / IMF | 13 |
+| Coeficiente Gini | Branko Milanovic | 9 |
+| Emissões CO₂ | Global Carbon Project | 14 |
+| Uso do Solo | FAO | 7 |
+| Investimento P&D | UNESCO | 8 |
+
+**Total: 78 pontos de validação vs 8 parâmetros livres** (modelo bem determinado)
 
 ---
 
 ## 🚀 Como Executar
 
-O projeto é construído estritamente com **Vanilla HTML, CSS e JavaScript**. Sem frameworks inchados, garantindo a velocidade de processamento necessária para resolver as ODEs no navegador.
+```bash
+# Desenvolvimento
+git clone https://github.com/CharlesEugeniodr/MVP-Matematica-da-Entropia-Calculadora-Parametrica.git
+cd MVP-Matematica-da-Entropia-Calculadora-Parametrica
+npm install
+npx serve .
 
-1. Faça o clone do repositório.
-2. Abra o arquivo `index.html` em qualquer navegador moderno (Chrome, Firefox, Safari, Edge).
-3. (Opcional) Suba os arquivos em qualquer servidor estático como GitHub Pages ou Vercel.
+# Testes
+npm test
+
+# Linting
+npm run lint
+```
 
 ---
 
-> *"Uma civilização que expande infinitamente em um ambiente finito só encontra duas vias de estabilização: regulação consciente ou entropia estrutural forçada."*
+## 🏗️ CI/CD
+
+Pipeline GitHub Actions:
+1. **ESLint** — Linting de todos os arquivos JS
+2. **Jest** — Testes unitários (integridade de módulos + fórmulas AIC/BIC)
+3. **Validate** — Smoke test de integridade dos arquivos fonte
+
+---
+
+> *"Uma civilização que expande infinitamente em um ambiente finito só encontra duas vias de estabilização: regulação consciente ou fragilidade estrutural forçada."*
 
 **Idealizado e construído por Charles Eugenio.**

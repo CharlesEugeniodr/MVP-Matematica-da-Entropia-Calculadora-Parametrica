@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculadora de Entropia Estrutural</title>
-  <meta name="description" content="Simulador interativo do modelo matemático de Entropia Estrutural — dinâmica de sistemas socioambientais complexos.">
+  <title>IFE — Índice de Fragilidade Estrutural</title>
+  <meta name="description" content="Simulador interativo do Índice de Fragilidade Estrutural (IFE/SFI) — modelagem de dinâmica de sistemas socioambientais complexos com MCMC, validação cruzada e dados reais.">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌀</text></svg>">
   <!-- Bibliotecas Externas -->
@@ -16,8 +16,9 @@
   <header class="top-header">
     <div class="header-content">
       <div class="title-block">
-        <h1 data-i18n="title-main">Calculadora de Entropia Estrutural</h1>
+        <h1 data-i18n="title-main">Índice de Fragilidade Estrutural (IFE)</h1>
         <p class="subtitle" data-i18n="subtitle">Sistema Dinâmico Não-Linear de Colapso Socioambiental</p>
+        <p class="subtitle-legacy">formerly: Calculadora de Entropia Estrutural</p>
       </div>
       <div class="lang-toggle">
         <button id="btn-pt" class="lang-btn active">PT</button>
@@ -160,7 +161,7 @@
     <!-- ═══ Live Monitor (Relógio & Catástrofes) ═════════════════════ -->
     <div class="live-monitor-container">
       <div class="atomic-clock-panel">
-        <h4 data-i18n="clock-title">⏱️ Relógio Atômico da Entropia</h4>
+        <h4 data-i18n="clock-title">⏱️ Relógio Atômico do IFE</h4>
         <p class="atomic-clock-subtitle" data-i18n="clock-sub">Acúmulo estrutural em tempo real</p>
         <div class="atomic-clock-display" id="atomic-clock-display">
           0.000000000
@@ -194,10 +195,19 @@
       <!-- Calibration Actions -->
       <div class="calibration-actions">
         <button id="btn-auto-calibrate" class="calibration-btn primary">
-          🎯 Auto-Calibrar com Dados Reais
+          🎯 Auto-Calibrar (IFE)
         </button>
-        <button id="btn-sensitivity" class="calibration-btn secondary">
-          📊 Análise de Sensibilidade (w1-w7)
+        <button id="btn-mcmc" class="calibration-btn mcmc">
+          🔬 MCMC Bayesiano
+        </button>
+        <button id="btn-cross-validate" class="calibration-btn secondary">
+          🔄 Validação Cruzada
+        </button>
+        <button id="btn-compare-models" class="calibration-btn secondary">
+          ⚖️ AIC/BIC Comparação
+        </button>
+        <button id="btn-sobol" class="calibration-btn secondary">
+          📊 Sobol (Sensibilidade Global)
         </button>
         <div id="calibration-status" class="calibration-status"></div>
       </div>
@@ -230,14 +240,16 @@
   </aside>
 
   <!-- ═══ Scripts ══════════════════════════════════════════════════ -->
-  <script src="js/i18n.js?v=3.5"></script>
-  <script src="js/audio.js?v=3.5"></script>
-  <script src="js/realdata.js?v=3.5"></script>
-  <script src="js/model.js?v=3.5"></script>
-  <script src="js/scenarios.js?v=3.5"></script>
-  <script src="js/charts.js?v=3.5"></script>
-  <script src="js/controls.js?v=3.5"></script>
-  <script src="js/app.js?v=3.5"></script>
+  <script src="js/i18n.js?v=4.0"></script>
+  <script src="js/audio.js?v=4.0"></script>
+  <script src="js/realdata.js?v=4.0"></script>
+  <script src="js/model.js?v=4.0"></script>
+  <script src="js/scenarios.js?v=4.0"></script>
+  <script src="js/mcmc.js?v=4.0"></script>
+  <script src="js/validation.js?v=4.0"></script>
+  <script src="js/charts.js?v=4.0"></script>
+  <script src="js/controls.js?v=4.0"></script>
+  <script src="js/app.js?v=4.0"></script>
 
 </body>
 </html>

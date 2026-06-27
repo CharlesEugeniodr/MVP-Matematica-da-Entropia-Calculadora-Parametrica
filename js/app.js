@@ -147,7 +147,7 @@ const App = (() => {
               html += `<div class="sens-item"><span class="sens-label">${w.label} (${w.baseValue.toFixed(3)})</span><div class="tp-bar"><div class="tp-fill" style="width:${pct}%;background:${color}"></div></div><span class="tp-pct" style="color:${color}">${w.avgImpact.toFixed(4)}</span></div>`;
             });
             html += '</div>';
-            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">Barras = índice de sensibilidade relativa · Valores = impacto médio absoluto em λ₂₁₀₀</div>';
+            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">Barras = índice de sensibilidade relativa · Valores = impacto médio absoluto em IFE₂₁₀₀</div>';
             results.innerHTML = html;
           }
 
@@ -158,9 +158,155 @@ const App = (() => {
       });
     }
 
-    console.log('%c🌀 Calculadora de Entropia Estrutural', 
+    // ── MCMC Bayesiano Button ────────────────────────────────────────
+    const mcmcBtn = document.getElementById('btn-mcmc');
+    if (mcmcBtn) {
+      mcmcBtn.addEventListener('click', () => {
+        if (typeof MCMCEngine === 'undefined') return;
+        const status = document.getElementById('calibration-status');
+        const results = document.getElementById('calibration-results');
+        mcmcBtn.disabled = true;
+        mcmcBtn.textContent = '⏳ Executando MCMC...';
+        if (status) status.textContent = 'Metropolis-Hastings: 5000 iterações...';
+
+        setTimeout(() => {
+          const baseParams = Controls.getParams();
+          const mcmcResult = MCMCEngine.run(baseParams, {
+            iterations: 3000,
+            burnIn: 500,
+            onProgress: (p) => {
+              if (status) status.textContent = `MCMC: ${p.iteration}/3000 · Aceitos: ${(p.acceptRate*100).toFixed(1)}% · LL: ${p.bestLL.toFixed(2)}`;
+            }
+          });
+
+          if (results) {
+            let html = '<h3 style="color:var(--cyan);">🔬 Resultados MCMC Bayesiano</h3>';
+            html += `<p>Taxa de aceitação: ${(mcmcResult.acceptRate*100).toFixed(1)}% · Cadeia: ${mcmcResult.chain.length} amostras</p>`;
+            html += '<table class="audit-table"><thead><tr><th>Parâmetro</th><th>Mediana</th><th>IC 95% Inferior</th><th>IC 95% Superior</th><th>σ</th></tr></thead><tbody>';
+            Object.entries(mcmcResult.posteriors).forEach(([key, post]) => {
+              html += `<tr><td><strong>${key}</strong></td><td>${post.median.toFixed(4)}</td><td>${post.ci95_lo.toFixed(4)}</td><td>${post.ci95_hi.toFixed(4)}</td><td>${post.std.toFixed(4)}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            html += '<button id="btn-apply-mcmc" class="calibration-btn primary" style="margin-top:8px;">✅ Aplicar Mediana MCMC</button>';
+            results.innerHTML = html;
+
+            document.getElementById('btn-apply-mcmc').addEventListener('click', () => {
+              Controls.setParams(mcmcResult.bestParams);
+              runSimulation(mcmcResult.bestParams, Controls.getCurrentScenario());
+              if (status) status.textContent = '✅ Parâmetros MCMC aplicados!';
+            });
+          }
+          mcmcBtn.disabled = false;
+          mcmcBtn.textContent = '🔬 MCMC Bayesiano';
+        }, 50);
+      });
+    }
+
+    // ── Cross-Validation Button ─────────────────────────────────────
+    const cvBtn = document.getElementById('btn-cross-validate');
+    if (cvBtn) {
+      cvBtn.addEventListener('click', () => {
+        if (typeof ValidationEngine === 'undefined') return;
+        const status = document.getElementById('calibration-status');
+        const results = document.getElementById('calibration-results');
+        cvBtn.disabled = true;
+        cvBtn.textContent = '⏳ Validando...';
+        if (status) status.textContent = 'Treinando 1970-2000, testando 2000-2024...';
+
+        setTimeout(() => {
+          const baseParams = Controls.getParams();
+          const cvResult = ValidationEngine.crossValidate(baseParams);
+          if (results) {
+            const oColor = cvResult.overfitRatio < 1.5 ? 'var(--emerald)' : cvResult.overfitRatio < 2.5 ? 'var(--amber)' : 'var(--red)';
+            let html = '<h3 style="color:var(--emerald);">🔄 Validação Cruzada Temporal</h3>';
+            html += `<p>Overfit ratio: <strong style="color:${oColor}">${cvResult.overfitRatio.toFixed(2)}x</strong> (< 1.5 = bom)</p>`;
+            html += '<table class="audit-table"><thead><tr><th>Métrica</th><th>Treino (1970-2000)</th><th>Teste (2000-2024)</th></tr></thead><tbody>';
+            html += `<tr><td>RMSE Pop</td><td>${cvResult.trainMetrics.rmse_pop.toFixed(3)}</td><td style="font-weight:700">${cvResult.testMetrics.rmse_pop.toFixed(3)}</td></tr>`;
+            html += `<tr><td>RMSE Temp</td><td>${cvResult.trainMetrics.rmse_temp.toFixed(3)}</td><td style="font-weight:700">${cvResult.testMetrics.rmse_temp.toFixed(3)}</td></tr>`;
+            html += `<tr><td>MAE Pop</td><td>${cvResult.trainMetrics.mae_pop.toFixed(3)}</td><td>${cvResult.testMetrics.mae_pop.toFixed(3)}</td></tr>`;
+            html += `<tr><td>MAPE Pop</td><td>${(cvResult.trainMetrics.mape_pop).toFixed(1)}%</td><td>${(cvResult.testMetrics.mape_pop).toFixed(1)}%</td></tr>`;
+            html += `<tr><td>Skill Score</td><td>—</td><td style="color:${cvResult.testMetrics.skill_score > 0 ? 'var(--emerald)' : 'var(--red)'}">${cvResult.testMetrics.skill_score.toFixed(3)}</td></tr>`;
+            html += '</tbody></table>';
+            results.innerHTML = html;
+          }
+          cvBtn.disabled = false;
+          cvBtn.textContent = '🔄 Validação Cruzada';
+          if (status) status.textContent = `✅ Cross-validation: overfit ratio ${cvResult.overfitRatio.toFixed(2)}x`;
+        }, 50);
+      });
+    }
+
+    // ── Model Comparison (AIC/BIC) Button ────────────────────────────
+    const cmpBtn = document.getElementById('btn-compare-models');
+    if (cmpBtn) {
+      cmpBtn.addEventListener('click', () => {
+        if (typeof ValidationEngine === 'undefined') return;
+        const status = document.getElementById('calibration-status');
+        const results = document.getElementById('calibration-results');
+        cmpBtn.disabled = true;
+        cmpBtn.textContent = '⏳ Comparando...';
+        if (status) status.textContent = 'Comparando 5 modelos (Linear → IFE Completo)...';
+
+        setTimeout(() => {
+          const baseParams = Controls.getParams();
+          const models = ValidationEngine.compareModels(baseParams);
+          if (results) {
+            let html = '<h3 style="color:var(--purple);">⚖️ Comparação de Modelos (AIC/BIC)</h3>';
+            html += '<table class="audit-table"><thead><tr><th>Modelo</th><th>k</th><th>RMSE</th><th>AIC</th><th>BIC</th><th>ΔAIC</th></tr></thead><tbody>';
+            models.forEach(m => {
+              const best = m.deltaAIC === 0;
+              const style = best ? 'background:rgba(16,185,129,0.15);font-weight:700;' : '';
+              html += `<tr style="${style}"><td>${best ? '🏆 ' : ''}${m.name}</td><td>${m.params_count}</td><td>${m.rmse.toFixed(3)}</td><td>${m.aic.toFixed(1)}</td><td>${m.bic.toFixed(1)}</td><td>${m.deltaAIC.toFixed(1)}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">k = parâmetros · ΔAIC = 0 é o melhor · ΔAIC > 10 indica modelo significativamente inferior</div>';
+            results.innerHTML = html;
+          }
+          cmpBtn.disabled = false;
+          cmpBtn.textContent = '⚖️ AIC/BIC Comparação';
+          if (status) status.textContent = '✅ Comparação de modelos concluída!';
+        }, 50);
+      });
+    }
+
+    // ── Sobol Sensitivity Button ─────────────────────────────────────
+    const sobolBtn = document.getElementById('btn-sobol');
+    if (sobolBtn) {
+      sobolBtn.addEventListener('click', () => {
+        if (typeof ValidationEngine === 'undefined') return;
+        const status = document.getElementById('calibration-status');
+        const results = document.getElementById('calibration-results');
+        sobolBtn.disabled = true;
+        sobolBtn.textContent = '⏳ Sobol...';
+        if (status) status.textContent = 'Calculando índices de Sobol (500 amostras × 8 params)...';
+
+        setTimeout(() => {
+          const baseParams = Controls.getParams();
+          const sobol = ValidationEngine.computeSobolIndices(baseParams, 200);
+          if (results) {
+            const sorted = sobol.indices.sort((a, b) => b.S1 - a.S1);
+            let html = '<h3 style="color:var(--amber);">📊 Índices de Sobol (Sensibilidade Global)</h3>';
+            html += `<p>Variância total de IFE₂₁₀₀: ${sobol.totalVariance.toFixed(6)} · ${sobol.nSamples} amostras</p>`;
+            html += '<div class="sensitivity-bars">';
+            sorted.forEach(s => {
+              const pct = Math.min(100, (s.S1 * 100)).toFixed(0);
+              const color = pct > 25 ? 'var(--red)' : pct > 10 ? 'var(--amber)' : 'var(--emerald)';
+              html += `<div class="sens-item"><span class="sens-label">${s.param}</span><div class="tp-bar"><div class="tp-fill" style="width:${pct}%;background:${color}"></div></div><span class="tp-pct" style="color:${color}">S₁=${(s.S1*100).toFixed(1)}%</span></div>`;
+            });
+            html += '</div>';
+            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">S₁ = fração da variância explicada por cada parâmetro individualmente</div>';
+            results.innerHTML = html;
+          }
+          sobolBtn.disabled = false;
+          sobolBtn.textContent = '📊 Sobol (Sensibilidade Global)';
+          if (status) status.textContent = '✅ Análise de Sobol concluída!';
+        }, 50);
+      });
+    }
+
+    console.log('%c🌀 IFE — Índice de Fragilidade Estrutural', 
       'color: #06b6d4; font-size: 16px; font-weight: bold;');
-    console.log('%cPacote de Imersão: Audio, PDF, SVG Map, Glitch e GNN', 
+    console.log('%cv4.0: MCMC, AIC/BIC, Sobol, Cross-Validation, Real APIs', 
       'color: #94a3b8; font-size: 11px;');
 
     // Run initial simulation
@@ -194,7 +340,7 @@ const App = (() => {
     const header = document.createElement('h1');
     header.style.textAlign = 'center';
     header.style.color = '#06b6d4';
-    header.innerText = 'Laudo Técnico IPCC - Entropia Estrutural (Fase 2)';
+    header.innerText = 'Laudo Técnico IPCC - IFE / Índice de Fragilidade Estrutural';
     tempContainer.appendChild(header);
 
     // Clone Charts
@@ -477,7 +623,7 @@ const App = (() => {
             <td>Catálise Entrópica</td>
           </tr>
           <tr>
-            <td><strong>Entropia Final (λ)</strong></td>
+            <td><strong>IFE Final (λ)</strong></td>
             <td>${results.lambda[0].toFixed(3)}</td>
             <td>${results.lambda[tL].toFixed(3)}</td>
             <td>${results.lambda[tL] >= results.params.lambda_crit ? 'FALÊNCIA' : 'ESTÁVEL'}</td>
@@ -637,7 +783,7 @@ const App = (() => {
         body: 'É a "imunidade" do planeta e da sociedade a choques. Uma governança forte (G) ajuda a construir resiliência, enquanto a alta degradação (D) e o caos estrutural (λ) destroem a capacidade de recuperação da civilização.'
       },
       eq5: {
-        title: 'Eq.5: Entropia Estrutural (λ)',
+        title: 'Eq.5: Índice de Fragilidade Estrutural (IFE/λ)',
         body: 'A medida definitiva do <strong>risco de colapso</strong>. É a soma de todos os estresses: saturação populacional, destruição da natureza, aquecimento global, uso do solo e desigualdade (I). É o termômetro da desestabilização (quando alto, a coerência sistêmica quebra).'
       }
     };

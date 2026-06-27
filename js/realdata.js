@@ -370,7 +370,97 @@ const RealData = (() => {
   ];
 
   // ══════════════════════════════════════════════════════════════════
-  // 5. REAL POPULATION DATA (World Bank)
+  // 5a. REAL ECONOMIC DATA
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * World GDP (Trillion USD, 2015 constant prices)
+   * Source: World Bank / IMF
+   */
+  const WORLD_GDP = [
+    { year: 1970, value: 19.4 },
+    { year: 1975, value: 22.1 },
+    { year: 1980, value: 26.7 },
+    { year: 1985, value: 30.2 },
+    { year: 1990, value: 35.0 },
+    { year: 1995, value: 38.8 },
+    { year: 2000, value: 45.1 },
+    { year: 2005, value: 53.0 },
+    { year: 2010, value: 63.2 },
+    { year: 2015, value: 74.8 },
+    { year: 2020, value: 72.1 },
+    { year: 2023, value: 84.5 },
+    { year: 2024, value: 87.0 }
+  ];
+
+  /**
+   * Global Gini Coefficient (0=equal, 1=unequal, inter-country weighted)
+   * Source: World Bank / Branko Milanovic
+   */
+  const GLOBAL_GINI = [
+    { year: 1970, value: 0.70 },
+    { year: 1980, value: 0.69 },
+    { year: 1990, value: 0.68 },
+    { year: 2000, value: 0.67 },
+    { year: 2005, value: 0.65 },
+    { year: 2010, value: 0.63 },
+    { year: 2015, value: 0.62 },
+    { year: 2020, value: 0.61 },
+    { year: 2024, value: 0.60 }
+  ];
+
+  /**
+   * Global CO2 Emissions (GtCO2/year)
+   * Source: Global Carbon Project
+   */
+  const CO2_EMISSIONS = [
+    { year: 1970, value: 14.9 },
+    { year: 1975, value: 16.0 },
+    { year: 1980, value: 19.5 },
+    { year: 1985, value: 19.8 },
+    { year: 1990, value: 22.7 },
+    { year: 1995, value: 23.5 },
+    { year: 2000, value: 25.2 },
+    { year: 2005, value: 29.5 },
+    { year: 2010, value: 33.4 },
+    { year: 2015, value: 35.2 },
+    { year: 2019, value: 36.7 },
+    { year: 2020, value: 34.8 },
+    { year: 2022, value: 36.8 },
+    { year: 2024, value: 37.4 }
+  ];
+
+  /**
+   * Agricultural Land Use (% of total land area)
+   * Source: FAO / World Bank
+   */
+  const LAND_USE_AGRI = [
+    { year: 1970, value: 36.7 },
+    { year: 1980, value: 37.5 },
+    { year: 1990, value: 38.0 },
+    { year: 2000, value: 38.4 },
+    { year: 2010, value: 37.7 },
+    { year: 2020, value: 37.0 },
+    { year: 2024, value: 36.8 }
+  ];
+
+  /**
+   * Global R&D Expenditure (% of GDP)
+   * Source: UNESCO Institute for Statistics
+   */
+  const RD_PERCENT_GDP = [
+    { year: 1970, value: 1.5 },
+    { year: 1980, value: 1.6 },
+    { year: 1990, value: 1.7 },
+    { year: 2000, value: 1.9 },
+    { year: 2010, value: 2.0 },
+    { year: 2015, value: 2.2 },
+    { year: 2020, value: 2.5 },
+    { year: 2024, value: 2.7 }
+  ];
+
+  // ══════════════════════════════════════════════════════════════════
+  // 5b. REAL POPULATION DATA (World Bank)
   // ══════════════════════════════════════════════════════════════════
   const WORLD_POPULATION = [
     { year: 1970, value: 3.70 },
@@ -661,6 +751,11 @@ const RealData = (() => {
     SEISMIC_EVENTS,
     HURRICANES_CAT4,
     WORLD_POPULATION,
+    WORLD_GDP,
+    GLOBAL_GINI,
+    CO2_EMISSIONS,
+    LAND_USE_AGRI,
+    RD_PERCENT_GDP,
     TIPPING_POINTS,
     REFERENCE_MODELS
   };

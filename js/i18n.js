@@ -11,8 +11,8 @@ const I18n = (() => {
   const dict = {
     // Top Bar & Controls
     'title-main': {
-      pt: 'Calculadora de Entropia Estrutural',
-      en: 'Structural Entropy Calculator'
+      pt: 'Índice de Fragilidade Estrutural (IFE)',
+      en: 'Structural Fragility Index (SFI)'
     },
     'subtitle': {
       pt: 'Sistema Dinâmico Não-Linear de Colapso Socioambiental',
@@ -38,7 +38,7 @@ const I18n = (() => {
     'btn-tech': { pt: 'Salto Tecnológico', en: 'Tech Jump' },
 
     // Cards
-    'card-lambda-title': { pt: 'Entropia Estrutural (λ)', en: 'Structural Entropy (λ)' },
+    'card-lambda-title': { pt: 'IFE - Fragilidade Estrutural (λ)', en: 'SFI - Structural Fragility (λ)' },
     'card-pop-title': { pt: 'Dinâmica Populacional', en: 'Population Dynamics' },
     'card-deg-title': { pt: 'Degradação e Resiliência', en: 'Degradation & Resilience' },
     'card-phase-title': { pt: 'Espaço de Fase: N vs λ', en: 'Phase Space: N vs λ' },
@@ -52,7 +52,7 @@ const I18n = (() => {
     },
 
     // Clock
-    'clock-title': { pt: '⏱️ Relógio Atômico da Entropia', en: '⏱️ Entropy Atomic Clock' },
+    'clock-title': { pt: '⏱️ Relógio Atômico do IFE', en: '⏱️ IFE Atomic Clock' },
     'clock-sub': { pt: 'Acúmulo estrutural em tempo real', en: 'Real-time structural accumulation' },
     'status-stable': { pt: 'Órbita Estável', en: 'Stable Orbit' },
     'status-alert': { pt: 'Alerta Crítico', en: 'Critical Alert' },

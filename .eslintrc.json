@@ -1,0 +1,33 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "jest": true
+  },
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "script"
+  },
+  "globals": {
+    "StructuralEntropyModel": "readonly",
+    "ChartEngine": "readonly",
+    "Controls": "readonly",
+    "Scenarios": "readonly",
+    "I18n": "readonly",
+    "AudioEngine": "readonly",
+    "RealData": "readonly",
+    "MCMCEngine": "readonly",
+    "ValidationEngine": "readonly",
+    "Seismograph": "readonly",
+    "html2pdf": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "varsIgnorePattern": "^_" }],
+    "no-undef": "error",
+    "eqeqeq": "warn",
+    "no-console": ["warn", { "allow": ["warn", "error", "log"] }],
+    "no-debugger": "error",
+    "no-var": "warn",
+    "prefer-const": "warn"
+  }
+}

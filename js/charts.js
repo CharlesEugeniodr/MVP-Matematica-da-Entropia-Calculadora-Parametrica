@@ -619,7 +619,7 @@ const ChartEngine = (() => {
       lMin, lMax, {
         title: typeof I18n !== 'undefined' ? I18n.getText('chart-phase-title-full') : 'Espaço de Fase: N vs λ (Trajetória de Atração)',
         xLabel: 'População (N)',
-        yLabel: 'Entropia (λ)',
+        yLabel: 'IFE (λ)',
         yFormat: v => v.toFixed(2),
         yTicks: 6,
         xTicks: 6
@@ -772,7 +772,7 @@ const ChartEngine = (() => {
       { data: planetaryData.co2, label: 'CO₂ (ppm)', color: '#a16207', min: 300, max: 600 },
       { data: planetaryData.forest, label: typeof I18n !== 'undefined' ? I18n.getText('label-forest') : 'Floresta (%)', color: THEME.emerald, min: 15, max: 35 },
       { data: planetaryData.hurricanes, label: typeof I18n !== 'undefined' ? I18n.getText('label-hurricanes') : 'Furacões 4+', color: THEME.amber, min: 0, max: 40 },
-      { data: planetaryData.lambda, label: 'λ (Entropia)', color: THEME.purple, min: 0, max: 2 }
+      { data: planetaryData.lambda, label: 'λ (IFE)', color: THEME.purple, min: 0, max: 2 }
     ];
 
     // Draw each line
