@@ -538,6 +538,112 @@ const RealData = (() => {
     }
   };
 
+  // ══════════════════════════════════════════════════════════════════
+  // 9. AUTO-CALIBRATION ENGINE
+  // Iterative optimization to minimize RMSE against real data
+  // ══════════════════════════════════════════════════════════════════
+  function autoCalibrate(baseParams, onProgress) {
+    const currentYear = new Date().getFullYear();
+    
+    // Parameters to optimize with their search ranges
+    const paramSpace = [
+      { key: 'r_N',       min: 0.005, max: 0.035, steps: 8 },
+      { key: 'mu_N',      min: 0.005, max: 0.025, steps: 5 },
+      { key: 'alpha1',    min: 0.001, max: 0.008, steps: 5 },
+      { key: 'emissions',  min: 0.2,  max: 0.8,   steps: 5 },
+      { key: 'D0',        min: 0.05,  max: 0.20,  steps: 4 },
+      { key: 'beta_D',    min: 0.02,  max: 0.10,  steps: 4 }
+    ];
+
+    let bestParams = { ...baseParams };
+    let bestError = Infinity;
+    let iterations = 0;
+    const maxPasses = 3; // Coarse-to-fine passes
+
+    for (let pass = 0; pass < maxPasses; pass++) {
+      const refineFactor = Math.pow(0.4, pass); // Narrow search window each pass
+
+      paramSpace.forEach(ps => {
+        const center = bestParams[ps.key];
+        const range = (ps.max - ps.min) * refineFactor;
+        const lo = Math.max(ps.min, center - range / 2);
+        const hi = Math.min(ps.max, center + range / 2);
+        const step = (hi - lo) / ps.steps;
+
+        for (let v = lo; v <= hi; v += step) {
+          const testParams = { ...bestParams, [ps.key]: v };
+          const error = evaluateFit(testParams, currentYear);
+          iterations++;
+
+          if (error < bestError) {
+            bestError = error;
+            bestParams = testParams;
+          }
+        }
+      });
+
+      if (onProgress) {
+        onProgress({ pass: pass + 1, totalPasses: maxPasses, bestError, iterations });
+      }
+    }
+
+    // Run final calibration metrics
+    const finalResult = StructuralEntropyModel.simulate(bestParams);
+    const calibration = runCalibration(finalResult);
+
+    return {
+      params: bestParams,
+      error: bestError,
+      iterations,
+      calibration,
+      changes: getParamChanges(baseParams, bestParams, paramSpace)
+    };
+  }
+
+  /**
+   * Evaluate fit quality: weighted RMSE of population + temperature vs real data.
+   */
+  function evaluateFit(params, maxYear) {
+    const result = StructuralEntropyModel.simulate(params);
+    let popError = 0, tempError = 0, popCount = 0, tempCount = 0;
+
+    for (let i = 0; i < result.length; i++) {
+      const t = result.time[i];
+      if (t > maxYear) break;
+      if (t % 5 !== 0) continue;
+
+      // Population error
+      const modelPop = result.Nn[i] + result.Ns[i];
+      const realPop = interpolateHistorical(WORLD_POPULATION, t);
+      popError += Math.pow(modelPop - realPop, 2);
+      popCount++;
+
+      // Temperature error
+      const modelTemp = result.deltaT[i];
+      const realTemp = interpolateHistorical(TEMPERATURE_ANOMALY, t);
+      tempError += Math.pow(modelTemp - realTemp, 2);
+      tempCount++;
+    }
+
+    const popRMSE = popCount > 0 ? Math.sqrt(popError / popCount) : 10;
+    const tempRMSE = tempCount > 0 ? Math.sqrt(tempError / tempCount) : 10;
+
+    // Weighted total error (population weighs more since it's easier to verify)
+    return popRMSE * 0.6 + tempRMSE * 0.4;
+  }
+
+  /**
+   * Get human-readable parameter changes.
+   */
+  function getParamChanges(oldParams, newParams, paramSpace) {
+    return paramSpace.map(ps => ({
+      key: ps.key,
+      old: oldParams[ps.key],
+      new: newParams[ps.key],
+      delta: ((newParams[ps.key] - oldParams[ps.key]) / oldParams[ps.key] * 100).toFixed(1) + '%'
+    }));
+  }
+
   // ── Public API ───────────────────────────────────────────────────
   return {
     fetchEarthquakes,
@@ -548,6 +654,7 @@ const RealData = (() => {
     buildPlanetaryTimeSeries,
     runCalibration,
     runSensitivityAnalysis,
+    autoCalibrate,
     TEMPERATURE_ANOMALY,
     CO2_PPM,
     FOREST_COVER,

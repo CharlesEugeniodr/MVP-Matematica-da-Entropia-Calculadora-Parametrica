@@ -191,6 +191,20 @@
       <h2 data-i18n="audit-title">Laudo Técnico e Auditoria do Modelo</h2>
       <p data-i18n="audit-desc">Exposição dos tensores analíticos, parâmetros processados pelo motor Estocástico DDE e registros de ocorrências estruturais.</p>
       
+      <!-- Calibration Actions -->
+      <div class="calibration-actions">
+        <button id="btn-auto-calibrate" class="calibration-btn primary">
+          🎯 Auto-Calibrar com Dados Reais
+        </button>
+        <button id="btn-sensitivity" class="calibration-btn secondary">
+          📊 Análise de Sensibilidade (w1-w7)
+        </button>
+        <div id="calibration-status" class="calibration-status"></div>
+      </div>
+
+      <!-- Calibration Results -->
+      <div id="calibration-results" class="calibration-results-container"></div>
+
       <div class="audit-table-wrapper" id="audit-table-wrapper">
         <!-- Populated by JS -->
       </div>

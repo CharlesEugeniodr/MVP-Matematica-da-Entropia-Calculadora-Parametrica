@@ -497,7 +497,32 @@ const Controls = (() => {
     getShocks,
     selectScenario,
     resetParams,
+    setParams,
     _lastResults: null
   };
+
+  /**
+   * Set parameter slider values programmatically (used by auto-calibration).
+   */
+  function setParams(newParams) {
+    PARAM_DEFS.forEach(group => {
+      group.params.forEach(pd => {
+        if (newParams[pd.key] !== undefined) {
+          const slider = document.getElementById('param-' + pd.key);
+          const display = document.getElementById('val-' + pd.key);
+          if (slider) {
+            slider.value = newParams[pd.key];
+            if (display) display.textContent = formatValue(newParams[pd.key], pd);
+          }
+        }
+      });
+    });
+  }
+
+  function formatValue(val, pd) {
+    if (pd.step >= 1) return val.toString();
+    if (pd.step >= 0.01) return val.toFixed(2);
+    return val.toFixed(3);
+  }
 
 })();

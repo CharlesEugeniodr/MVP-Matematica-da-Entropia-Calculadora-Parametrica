@@ -70,6 +70,94 @@ const App = (() => {
       pdfBtn.addEventListener('click', generatePDF);
     }
 
+    // ── Auto-Calibration Button ───────────────────────────────────
+    const calBtn = document.getElementById('btn-auto-calibrate');
+    if (calBtn) {
+      calBtn.addEventListener('click', () => {
+        if (typeof RealData === 'undefined') return;
+        const status = document.getElementById('calibration-status');
+        const results = document.getElementById('calibration-results');
+        
+        calBtn.disabled = true;
+        calBtn.textContent = '⏳ Calibrando...';
+        if (status) status.textContent = 'Executando otimização iterativa (3 passes)...';
+
+        // Run async via setTimeout to allow UI update
+        setTimeout(() => {
+          const baseParams = Controls.getParams();
+          const calResult = RealData.autoCalibrate(baseParams, (progress) => {
+            if (status) status.textContent = `Pass ${progress.pass}/${progress.totalPasses} · Erro: ${progress.bestError.toFixed(4)} · ${progress.iterations} iterações`;
+          });
+
+          // Display results
+          if (results) {
+            let html = '<h3 style="color:var(--emerald);">✅ Calibração Concluída</h3>';
+            html += `<p>Score: <strong style="font-size:1.4rem; color:${calResult.calibration.score >= 70 ? 'var(--emerald)' : 'var(--amber)'};">${calResult.calibration.score}%</strong> · ${calResult.iterations} iterações · Erro final: ${calResult.error.toFixed(4)}</p>`;
+            html += '<table class="audit-table"><thead><tr><th>Parâmetro</th><th>Antes</th><th>Depois</th><th>Δ</th></tr></thead><tbody>';
+            calResult.changes.forEach(c => {
+              const highlight = Math.abs(parseFloat(c.delta)) > 10 ? 'color:var(--amber);font-weight:700;' : '';
+              html += `<tr><td><strong>${c.key}</strong></td><td>${c.old.toFixed(4)}</td><td style="${highlight}">${c.new.toFixed(4)}</td><td>${c.delta}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            html += '<button id="btn-apply-calibration" class="calibration-btn primary" style="margin-top:8px;">✅ Aplicar Parâmetros Calibrados</button>';
+            results.innerHTML = html;
+
+            // Apply button
+            document.getElementById('btn-apply-calibration').addEventListener('click', () => {
+              Controls.setParams(calResult.params);
+              runSimulation(calResult.params, Controls.getCurrentScenario());
+              if (status) status.textContent = '✅ Parâmetros calibrados aplicados com sucesso!';
+            });
+          }
+
+          calBtn.disabled = false;
+          calBtn.textContent = '🎯 Auto-Calibrar com Dados Reais';
+          if (status) status.textContent = `✅ Concluído! Score: ${calResult.calibration.score}% (RMSE Pop: ${calResult.calibration.population.rmse.toFixed(3)}, RMSE Temp: ${calResult.calibration.temperature.rmse.toFixed(3)})`;
+        }, 50);
+      });
+    }
+
+    // ── Sensitivity Analysis Button ────────────────────────────────
+    const sensBtn = document.getElementById('btn-sensitivity');
+    if (sensBtn) {
+      sensBtn.addEventListener('click', () => {
+        if (typeof RealData === 'undefined') return;
+        const status = document.getElementById('calibration-status');
+        const results = document.getElementById('calibration-results');
+
+        sensBtn.disabled = true;
+        sensBtn.textContent = '⏳ Analisando...';
+        if (status) status.textContent = 'Executando Monte Carlo (200 trials × 7 pesos)...';
+
+        setTimeout(() => {
+          const baseParams = Controls.getParams();
+          const sensResult = RealData.runSensitivityAnalysis(baseParams, 100);
+
+          if (results) {
+            // Sort by sensitivity index
+            const sorted = Object.values(sensResult.weights).sort((a, b) => b.index - a.index);
+            const maxIdx = sorted[0].index || 1;
+
+            let html = '<h3 style="color:var(--purple);">📊 Análise de Sensibilidade dos Pesos λ</h3>';
+            html += `<p>λ base: ${sensResult.baseLambda.toFixed(4)} · ${sensResult.trials} trials Monte Carlo</p>`;
+            html += '<div class="sensitivity-bars">';
+            sorted.forEach(w => {
+              const pct = (w.index / maxIdx * 100).toFixed(0);
+              const color = pct > 70 ? 'var(--red)' : pct > 40 ? 'var(--amber)' : 'var(--emerald)';
+              html += `<div class="sens-item"><span class="sens-label">${w.label} (${w.baseValue.toFixed(3)})</span><div class="tp-bar"><div class="tp-fill" style="width:${pct}%;background:${color}"></div></div><span class="tp-pct" style="color:${color}">${w.avgImpact.toFixed(4)}</span></div>`;
+            });
+            html += '</div>';
+            html += '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">Barras = índice de sensibilidade relativa · Valores = impacto médio absoluto em λ₂₁₀₀</div>';
+            results.innerHTML = html;
+          }
+
+          sensBtn.disabled = false;
+          sensBtn.textContent = '📊 Análise de Sensibilidade (w1-w7)';
+          if (status) status.textContent = '✅ Análise de sensibilidade concluída!';
+        }, 50);
+      });
+    }
+
     console.log('%c🌀 Calculadora de Entropia Estrutural', 
       'color: #06b6d4; font-size: 16px; font-weight: bold;');
     console.log('%cPacote de Imersão: Audio, PDF, SVG Map, Glitch e GNN', 
