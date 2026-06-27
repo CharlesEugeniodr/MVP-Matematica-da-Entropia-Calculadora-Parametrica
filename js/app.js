@@ -482,15 +482,19 @@ const App = (() => {
       Seismograph.updateParams(lambda, lambda_crit, deltaT);
     }
 
-    // 5. Update GNN News Ticker (randomly every ~3 seconds)
-    if (typeof I18n !== 'undefined' && Math.random() < 0.02) {
-      let level = 'low';
-      if (lambda >= lambda_crit) level = 'high';
-      else if (lambda >= lambda_crit * 0.8) level = 'medium';
-      
-      const newsEl = document.getElementById('gnn-text');
-      if (newsEl) {
-        newsEl.textContent = `::: ${I18n.getRandomNews(level)} :::`;
+    // 5. Update GNN News Ticker (every 15 seconds to match CSS animation)
+    if (typeof I18n !== 'undefined') {
+      const now = Date.now();
+      if (!window.lastGnnUpdate || now - window.lastGnnUpdate > 15000) {
+        window.lastGnnUpdate = now;
+        let level = 'low';
+        if (lambda >= lambda_crit) level = 'high';
+        else if (lambda >= lambda_crit * 0.8) level = 'medium';
+        
+        const newsEl = document.getElementById('gnn-text');
+        if (newsEl) {
+          newsEl.textContent = `::: ${I18n.getRandomNews(level)} :::`;
+        }
       }
     }
   }

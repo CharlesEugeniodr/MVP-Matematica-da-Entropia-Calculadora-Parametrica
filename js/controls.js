@@ -11,46 +11,22 @@ const Controls = (() => {
 
   // Parameter definitions with metadata for UI generation
   const PARAM_DEFS = [
-    { group: 'Dinâmica Populacional', params: [
-      { key: 'r_N',   label: 'r_N (taxa de crescimento)',   min: 0, max: 0.05,  step: 0.001, unit: '' },
-      { key: 'mu_N',  label: 'μ_N (sensibilidade à pressão)', min: 0, max: 0.05, step: 0.001, unit: '' },
-      { key: 'K0',    label: 'K₀ (capacidade inicial)',     min: 5e9, max: 20e9, step: 1e9, unit: 'B', format: v => (v/1e9).toFixed(0) + 'B' },
-      { key: 'N0',    label: 'N₀ (população 1970)',         min: 2e9, max: 6e9,  step: 0.1e9, unit: 'B', format: v => (v/1e9).toFixed(1) + 'B' },
-    ]},
-    { group: 'Capacidade de Suporte', params: [
-      { key: 'eta5',  label: 'η₅ (impacto degradação)',     min: 0, max: 5,    step: 0.1 },
-      { key: 'eta6',  label: 'η₆ (impacto aquecimento)',    min: 0, max: 0.3,  step: 0.01 },
-      { key: 'omega', label: 'ω (impacto uso do solo)',     min: 0, max: 1,    step: 0.05 },
-      { key: 'phi',   label: 'φ (boost tech×gov)',          min: 0, max: 5,    step: 0.1 },
-    ]},
-    { group: 'Degradação Ambiental', params: [
-      { key: 'alpha1', label: 'α₁ (emissões → D)',          min: 0, max: 0.01, step: 0.001 },
-      { key: 'alpha2', label: 'α₂ (uso solo → D)',          min: 0, max: 0.01, step: 0.001 },
-      { key: 'alpha3', label: 'α₃ (poluição → D)',          min: 0, max: 0.01, step: 0.001 },
-      { key: 'beta_D', label: 'β_D (mitigação)',            min: 0, max: 0.2,  step: 0.01 },
-      { key: 'D0',     label: 'D₀ (degradação 1970)',       min: 0, max: 0.5,  step: 0.01 },
-    ]},
-    { group: 'Resiliência', params: [
-      { key: 'rho_G',      label: 'ρ_G (gov constrói R)',      min: 0, max: 0.1,  step: 0.005 },
-      { key: 'rho_D',      label: 'ρ_D (D erode R)',           min: 0, max: 0.1,  step: 0.005 },
-      { key: 'rho_lambda',  label: 'ρ_λ (λ erode R)',          min: 0, max: 0.1,  step: 0.005 },
-      { key: 'R0',          label: 'R₀ (resiliência 1970)',     min: 0, max: 1,    step: 0.05 },
-    ]},
-    { group: 'Pesos de λ', params: [
-      { key: 'w1', label: 'w₁ (N/K_eff)',  min: 0, max: 0.5, step: 0.01 },
-      { key: 'w2', label: 'w₂ (D)',        min: 0, max: 0.5, step: 0.01 },
-      { key: 'w3', label: 'w₃ (ΔT)',       min: 0, max: 0.5, step: 0.01 },
-      { key: 'w4', label: 'w₄ (U)',        min: 0, max: 0.5, step: 0.01 },
-      { key: 'w5', label: 'w₅ (I)',        min: 0, max: 0.5, step: 0.01 },
-      { key: 'w6', label: 'w₆ (T×G)',      min: 0, max: 0.5, step: 0.01 },
-      { key: 'w7', label: 'w₇ (R)',        min: 0, max: 0.5, step: 0.01 },
+    { group: 'Simulação', params: [
+      { key: 't_start', label: 'Ano Inicial', min: 1900, max: 2020, step: 1 },
+      { key: 't_end',   label: 'Ano Final', min: 2050, max: 2200, step: 1 },
+      { key: 'dt',      label: 'Passo de Tempo (dt)', min: 0.01, max: 1, step: 0.01 },
     ]},
     { group: 'Limiares Críticos', params: [
-      { key: 'lambda_crit', label: 'λ_crit',              min: 0.3, max: 2,  step: 0.05 },
-      { key: 'tau_p',       label: 'τ_p (anos persist.)',  min: 1,   max: 30, step: 1 },
-      { key: 'tau_r',       label: 'τ_r (anos recup.)',    min: 1,   max: 30, step: 1 },
-      { key: 'R_min',       label: 'R_min',                min: 0,   max: 0.5, step: 0.05 },
-      { key: 'G_min',       label: 'G_min',                min: 0,   max: 0.5, step: 0.05 },
+      { key: 'lambda_crit', label: 'λ_crit (Ruptura)', min: 0.5, max: 2.0, step: 0.05 },
+      { key: 'R_min', label: 'R_min (Resiliência Mín.)', min: 0.05, max: 0.8, step: 0.05 },
+    ]},
+    { group: 'Dinâmica Global [0,1]', params: [
+      { key: 'gov_policy', label: 'Governança', min: 0, max: 1, step: 0.01 },
+      { key: 'tech_innovation', label: 'Inovação Tecnológica', min: 0, max: 1, step: 0.01 },
+      { key: 'emissions', label: 'Taxa de Emissões', min: 0, max: 1, step: 0.01 },
+      { key: 'land_use', label: 'Degradação do Solo', min: 0, max: 1, step: 0.01 },
+      { key: 'pollution', label: 'Poluição', min: 0, max: 1, step: 0.01 },
+      { key: 'inequality', label: 'Desigualdade', min: 0, max: 1, step: 0.01 },
     ]}
   ];
 
