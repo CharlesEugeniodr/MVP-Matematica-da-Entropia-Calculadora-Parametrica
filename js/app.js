@@ -35,6 +35,7 @@ const App = (() => {
     const initialScenario = Controls.getCurrentScenario();
     
     setupEducationalModals();
+    setupTabs();
 
     // Language Toggles
     const btnPt = document.getElementById('btn-pt');
@@ -92,30 +93,6 @@ const App = (() => {
     ChartEngine.attachTooltip('chart-population', null, 'population');
     ChartEngine.attachTooltip('chart-degradation', null, 'degradation');
     ChartEngine.attachTooltip('chart-dashboard', null, 'dashboard');
-
-    setupEducationalModals();
-
-    // Actions
-    const audioBtn = document.getElementById('audio-btn');
-    if (audioBtn) {
-      audioBtn.addEventListener('click', () => {
-        if (typeof AudioEngine !== 'undefined') {
-          const isOn = AudioEngine.toggle();
-          audioBtn.classList.toggle('on', isOn);
-          audioBtn.textContent = isOn ? '🔊 Som: ON' : '🔈 Som: OFF';
-        }
-      });
-    }
-
-    const pdfBtn = document.getElementById('pdf-btn');
-    if (pdfBtn) {
-      pdfBtn.addEventListener('click', generatePDF);
-    }
-
-    console.log('%c🌀 Calculadora de Entropia Estrutural', 
-      'color: #06b6d4; font-size: 16px; font-weight: bold;');
-    console.log('%cPacote de Imersão: Audio, PDF, SVG Map e Glitch', 
-      'color: #94a3b8; font-size: 11px;');
   }
 
   /**
@@ -126,16 +103,45 @@ const App = (() => {
       alert("Biblioteca de PDF carregando. Tente novamente em instantes.");
       return;
     }
-    const element = document.querySelector('.main-container');
+    
+    // Create a temporary container to hold BOTH the charts and the audit table
+    const tempContainer = document.createElement('div');
+    tempContainer.style.background = '#0f172a';
+    tempContainer.style.color = '#fff';
+    tempContainer.style.padding = '20px';
+    
+    const header = document.createElement('h1');
+    header.style.textAlign = 'center';
+    header.style.color = '#06b6d4';
+    header.innerText = 'Laudo Técnico IPCC - Entropia Estrutural (Fase 2)';
+    tempContainer.appendChild(header);
+
+    // Clone Charts
+    const chartsDiv = document.querySelector('.main-container');
+    if (chartsDiv) tempContainer.appendChild(chartsDiv.cloneNode(true));
+    
+    // Clone Audit Table
+    const auditDiv = document.getElementById('tab-audit');
+    if (auditDiv) {
+      const clonedAudit = auditDiv.cloneNode(true);
+      clonedAudit.style.display = 'block'; // Ensure it's visible in PDF
+      tempContainer.appendChild(clonedAudit);
+    }
+
+    document.body.appendChild(tempContainer);
+
     const scenarioName = Controls.getCurrentScenario().name;
     const opt = {
       margin:       0.3,
       filename:     `Laudo_Cientifico_IPCC_${scenarioName.replace(/ /g, '_')}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+      jsPDF:        { unit: 'in', format: 'a3', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(element).save();
+
+    html2pdf().set(opt).from(tempContainer).save().then(() => {
+      document.body.removeChild(tempContainer); // Cleanup
+    });
   }
 
   /**
@@ -242,39 +248,128 @@ const App = (() => {
   }
 
   /**
-   * Update the textual Audit and Scenario Report.
+   * Setup Tab Navigation
+   */
+  function setupTabs() {
+    const btns = document.querySelectorAll('.tab-btn');
+    const panes = document.querySelectorAll('.tab-pane');
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        btns.forEach(b => b.classList.remove('active'));
+        panes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-tab');
+        const target = document.getElementById(targetId);
+        if(target) target.classList.add('active');
+      });
+    });
+  }
+
+  /**
+   * Update the textual Audit and Scenario Report (Dense Tab)
    */
   function updateAuditReport(results) {
+    // 1. Quick top bar update
     const content = document.getElementById('audit-content');
-    if (!content) return;
+    if (content) {
+      const scenarioId = Controls.getScenarioId();
+      const sc = Scenarios.ALL.find(s => s.id === scenarioId);
+      const scenarioName = sc ? sc.name : scenarioId;
 
-    const scenarioId = Controls.getScenarioId();
-    const sc = Scenarios.ALL.find(s => s.id === scenarioId);
-    const scenarioName = sc ? sc.name : scenarioId;
-
-    const finalLambda = results.lambda[results.length - 1];
-    const lambdaCrit  = results.params.lambda_crit;
-    const finalN = (results.N[results.length - 1] / 1e9).toFixed(2);
-    const finalK = (results.Keff[results.length - 1] / 1e9).toFixed(2);
-    const finalD = results.D[results.length - 1].toFixed(2);
-    
-    let statusText = '';
-    if (finalLambda < lambdaCrit * 0.6) {
-      statusText = '<span style="color:var(--emerald);">O sistema apresenta alta coerência estrutural e resiliência. A órbita demográfica encontra-se segura dentro do Atrator Estável.</span>';
-    } else if (finalLambda < lambdaCrit) {
-      statusText = '<span style="color:var(--yellow);">O sistema está sob estresse moderado. A entropia aproxima-se de níveis de alerta, exigindo intervenções em governança ou mitigação para evitar o Tipping Point.</span>';
-    } else if (finalLambda < lambdaCrit * 1.3) {
-      statusText = '<span style="color:var(--red);">ALERTA CRÍTICO: O sistema rompeu o limiar de resiliência (λ > λ_crit). A capacidade de suporte global está em degradação acelerada devido à entropia excessiva.</span>';
-    } else {
-      statusText = '<span style="color:#b91c1c; font-weight:bold;">COLAPSO SISTÊMICO: A Entropia Estrutural causou a falência irreversível da capacidade de suporte, forçando uma correção demográfica drástica.</span>';
+      const finalLambda = results.lambda[results.length - 1];
+      const lambdaCrit  = results.params.lambda_crit;
+      const finalN = ((results.Nn[results.length - 1] + results.Ns[results.length - 1])).toFixed(2);
+      
+      let statusText = '';
+      if (finalLambda < lambdaCrit * 0.6) {
+        statusText = '<span style="color:var(--emerald);">Alta coerência estrutural e resiliência.</span>';
+      } else if (finalLambda < lambdaCrit) {
+        statusText = '<span style="color:var(--yellow);">Sistema sob estresse moderado. Requer mitigação.</span>';
+      } else {
+        statusText = '<span style="color:#b91c1c; font-weight:bold;">COLAPSO SISTÊMICO OU ALERTA CRÍTICO ATIVO.</span>';
+      }
+      content.innerHTML = `<strong>Cenário:</strong> ${scenarioName} | <strong>População Final (2100):</strong> ${finalN} Bi | <strong>Status:</strong> ${statusText}`;
     }
 
-    content.innerHTML = `
-      <strong>Cenário Projetado:</strong> ${scenarioName} <br>
-      <strong>Projeção Demográfica (2100):</strong> ${finalN} Bilhões de habitantes (Capacidade de Suporte: ${finalK} Bilhões)<br>
-      <strong>Entropia Estrutural Final (λ):</strong> ${finalLambda.toFixed(3)} (Limiar de Colapso Sistêmico: ${lambdaCrit}) <br>
-      <strong>Auditoria do Modelo:</strong> ${statusText}
+    // 2. Dense Audit Table in Tab 2
+    const wrapper = document.getElementById('audit-table-wrapper');
+    if (!wrapper) return;
+
+    const tL = results.length - 1;
+    const nN_0 = results.Nn[0].toFixed(2), nN_end = results.Nn[tL].toFixed(2);
+    const nS_0 = results.Ns[0].toFixed(2), nS_end = results.Ns[tL].toFixed(2);
+    const e_0 = results.E[0].toFixed(2), e_end = results.E[tL].toFixed(2);
+    const dt_end = results.deltaT[tL].toFixed(2);
+    
+    let html = `
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th>Parâmetro / Variável</th>
+            <th>Valor Inicial (1970)</th>
+            <th>Valor Final (2100)</th>
+            <th>Variação / Impacto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>População Norte (N_n)</strong></td>
+            <td>${nN_0} Bi</td>
+            <td>${nN_end} Bi</td>
+            <td>Asilo migratório / Resiliência Alta</td>
+          </tr>
+          <tr>
+            <td><strong>População Sul (N_s)</strong></td>
+            <td>${nS_0} Bi</td>
+            <td>${nS_end} Bi</td>
+            <td>Impacto primário do Colapso (Fome/Clima)</td>
+          </tr>
+          <tr>
+            <td><strong>Economia Global (E)</strong></td>
+            <td>$${e_0} Tri</td>
+            <td>$${e_end} Tri</td>
+            <td>Motor Capitalista</td>
+          </tr>
+          <tr>
+            <td><strong>Anomalia Térmica (ΔT)</strong></td>
+            <td>+0.50 °C</td>
+            <td>+${dt_end} °C</td>
+            <td>Catálise Entrópica</td>
+          </tr>
+          <tr>
+            <td><strong>Entropia Final (λ)</strong></td>
+            <td>${results.lambda[0].toFixed(3)}</td>
+            <td>${results.lambda[tL].toFixed(3)}</td>
+            <td>${results.lambda[tL] >= results.params.lambda_crit ? 'FALÊNCIA' : 'ESTÁVEL'}</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 style="margin-top: 1.5rem; color:var(--sky);">Histórico de Ocorrências (Shocks)</h3>
+      <table class="audit-table">
+        <thead>
+          <tr><th>Ano</th><th>Tipo do Choque</th></tr>
+        </thead>
+        <tbody>
     `;
+
+    if (results.appliedShocks && results.appliedShocks.length > 0) {
+      results.appliedShocks.forEach(sh => {
+        let name = sh.type === 'pandemic' ? '🦠 Pandemia Global' : (sh.type === 'war' ? '⚔️ Conflito Global' : '💡 Salto Tecnológico');
+        html += `<tr><td>${sh.year}</td><td>${name}</td></tr>`;
+      });
+    } else {
+      html += `<tr><td colspan="2">Nenhum choque manual injetado.</td></tr>`;
+    }
+
+    if (results.events.tau1) {
+      html += `<tr style="color:#ef4444;"><td>${results.events.tau1.toFixed(0)}</td><td>⚠️ Ruptura Sistêmica 1 (λ > 1.0)</td></tr>`;
+    }
+    if (results.events.tau2) {
+      html += `<tr style="color:#b91c1c; font-weight:bold;"><td>${results.events.tau2.toFixed(0)}</td><td>💀 Colapso Final (λ > λ_crit)</td></tr>`;
+    }
+
+    html += `</tbody></table>`;
+    wrapper.innerHTML = html;
   }
 
   /**

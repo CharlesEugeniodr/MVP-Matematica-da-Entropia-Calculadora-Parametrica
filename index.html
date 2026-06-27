@@ -26,6 +26,12 @@
     </div>
   </header>
 
+  <!-- ═══ TABS NAV ═════════════════════════════════════════════════ -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" data-tab="tab-sim" data-i18n="tab-sim">Simulador Global</button>
+    <button class="tab-btn" data-tab="tab-audit" data-i18n="tab-audit">Auditoria de Dados</button>
+  </div>
+
   <!-- ═══ Relatório de Auditoria e Cenário ═══════════════ -->
   <div class="audit-bar" id="audit-bar">
     <h3>📊 Relatório de Auditoria e Projeção de Cenário</h3>
@@ -79,11 +85,14 @@
     </div>
   </div>
 
-  <!-- ═══ Main content ═════════════════════════════════════════════ -->
+  <!-- ═══ CONTENT AREA ═════════════════════════════════════════════ -->
   <main class="main-container">
+    
+    <!-- TAB 1: SIMULADOR -->
+    <div id="tab-sim" class="tab-pane active">
 
-    <!-- Actions bar -->
-    <div class="actions-bar">
+      <!-- ═══ Actions bar ════════════════════════════════════════════════ -->
+      <div class="actions-bar">
       <div class="action-left">
         <button class="export-btn" id="export-btn" title="Exportar dados brutos do cenário" data-i18n="btn-csv">
           📊 CSV
@@ -139,7 +148,50 @@
       </div>
     </div>
 
-  </main>
+    <!-- ═══ Live Monitor (Relógio & Catástrofes) ═════════════════════ -->
+    <div class="live-monitor-container">
+      <div class="atomic-clock-panel">
+        <h4 data-i18n="clock-title">⏱️ Relógio Atômico da Entropia</h4>
+        <p class="atomic-clock-subtitle" data-i18n="clock-sub">Acúmulo estrutural em tempo real</p>
+        <div class="atomic-clock-display" id="atomic-clock-display">
+          0.000000000
+        </div>
+        <div class="atomic-clock-status" id="atomic-clock-status" data-i18n="status-stable">Estável</div>
+      </div>
+      
+      <div class="catastrophe-feed-panel">
+        <h4 data-i18n="monitor-title">📡 Monitor Global de Anomalias</h4>
+        <div class="feed-container" id="catastrophe-feed">
+          <div class="feed-item sys-msg">Sistema de monitoramento iniciado. Escaneando distorções na malha entrópica...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Global News Network (GNN Ticker) ═════════════════════════ -->
+    <div class="gnn-ticker-container">
+      <div class="gnn-label">GNN LIVE</div>
+      <div class="gnn-marquee">
+        <span id="gnn-text">INITIALIZING GLOBAL NEWS NETWORK... STANDBY.</span>
+      </div>
+    </div>
+  </div> <!-- END TAB 1 -->
+
+  <!-- TAB 2: AUDITORIA -->
+  <div id="tab-audit" class="tab-pane">
+    <div class="audit-container">
+      <h2 data-i18n="audit-title">Laudo Técnico e Auditoria do Modelo</h2>
+      <p data-i18n="audit-desc">Exposição dos tensores analíticos, parâmetros processados pelo motor Estocástico DDE e registros de ocorrências estruturais.</p>
+      
+      <div class="audit-table-wrapper" id="audit-table-wrapper">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div> <!-- END TAB 2 -->
+
+  </main><!-- ═══ Footer ═══════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <p data-i18n="footer-text">Idealizado e construído por Charles Eugenio. Motor Estocástico com DDEs.</p>
+  </footer>
 
   <!-- ═══ Tooltip ══════════════════════════════════════════════════ -->
   <div id="tooltip"></div>
@@ -153,38 +205,6 @@
     <div id="param-panel"></div>
     <div id="custom-sliders"></div>
   </aside>
-
-  <!-- ═══ Live Monitor (Relógio & Catástrofes) ═════════════════════ -->
-  <div class="live-monitor-container">
-    <div class="atomic-clock-panel">
-      <h4 data-i18n="clock-title">⏱️ Relógio Atômico da Entropia</h4>
-      <p class="atomic-clock-subtitle" data-i18n="clock-sub">Acúmulo estrutural em tempo real</p>
-      <div class="atomic-clock-display" id="atomic-clock-display">
-        0.000000000
-      </div>
-      <div class="atomic-clock-status" id="atomic-clock-status" data-i18n="status-stable">Estável</div>
-    </div>
-    
-    <div class="catastrophe-feed-panel">
-      <h4 data-i18n="monitor-title">📡 Monitor Global de Anomalias</h4>
-      <div class="feed-container" id="catastrophe-feed">
-        <div class="feed-item sys-msg">Sistema de monitoramento iniciado. Escaneando distorções na malha entrópica...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ Global News Network (GNN Ticker) ═════════════════════════ -->
-  <div class="gnn-ticker-container">
-    <div class="gnn-label">GNN LIVE</div>
-    <div class="gnn-marquee">
-      <span id="gnn-text">INITIALIZING GLOBAL NEWS NETWORK... STANDBY.</span>
-    </div>
-  </div>
-
-  <!-- ═══ Footer ═══════════════════════════════════════════════════ -->
-  <footer class="footer">
-    <p data-i18n="footer-text">Idealizado e construído por Charles Eugenio. Motor Estocástico com DDEs.</p>
-  </footer>
 
   <!-- ═══ Scripts ══════════════════════════════════════════════════ -->
   <script src="js/i18n.js"></script>

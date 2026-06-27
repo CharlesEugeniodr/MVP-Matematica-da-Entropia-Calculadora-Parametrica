@@ -356,19 +356,24 @@ const ChartEngine = (() => {
     ], margin.left + 4, margin.top + plotH + 26);
   }
 
-  // ── Chart 2: N(t) vs K_eff(t) ────────────────────────────────────
+  // ── Chart 2: N_tot(t) vs K_eff(t) ────────────────────────────────
   function renderPopulationChart(canvas, results) {
     const { ctx, w, h } = setupCanvas(canvas);
     const margin = { top: 36, right: 16, bottom: 30, left: 58 };
 
     const time = results.time;
-    const N    = results.N;
+    const Nn   = results.Nn;
+    const Ns   = results.Ns;
     const Keff = results.Keff;
+    const N_tot = new Float64Array(time.length);
+    for (let i = 0; i < time.length; i++) {
+      N_tot[i] = Nn[i] + Ns[i];
+    }
 
     let vMin = Infinity, vMax = -Infinity;
-    for (let i = 0; i < N.length; i++) {
-      const mn = Math.min(N[i], Keff[i]);
-      const mx = Math.max(N[i], Keff[i]);
+    for (let i = 0; i < N_tot.length; i++) {
+      const mn = Math.min(N_tot[i], Keff[i]);
+      const mx = Math.max(N_tot[i], Keff[i]);
       if (mn < vMin) vMin = mn;
       if (mx > vMax) vMax = mx;
     }
@@ -378,18 +383,18 @@ const ChartEngine = (() => {
       results.params.t_start, results.params.t_end,
       yRange.min, yRange.max, {
         title: 'N(t) vs K_eff(t) — População e Capacidade de Suporte',
-        yLabel: 'Pessoas',
+        yLabel: 'Pessoas (Bilhões)',
         yTicks: 6
       });
 
-    // Area between N and Keff when N > Keff (overshoot zone)
+    // Area between N_tot and Keff when N_tot > Keff (overshoot zone)
     for (let i = 2; i < time.length; i += 2) {
-      if (N[i] > Keff[i]) {
+      if (N_tot[i] > Keff[i]) {
         const x0 = mapX(time[i - 2]);
         const x1 = mapX(time[i]);
         ctx.fillStyle = 'rgba(239,68,68,0.08)';
-        ctx.fillRect(x0, mapY(Math.max(N[i-2], N[i])),
-          x1 - x0, mapY(Math.min(Keff[i-2], Keff[i])) - mapY(Math.max(N[i-2], N[i])));
+        ctx.fillRect(x0, mapY(Math.max(N_tot[i-2], N_tot[i])),
+          x1 - x0, mapY(Math.min(Keff[i-2], Keff[i])) - mapY(Math.max(N_tot[i-2], N_tot[i])));
       }
     }
 
@@ -398,23 +403,20 @@ const ChartEngine = (() => {
 
     // Lines
     drawLine(ctx, time, Keff, mapX, mapY, THEME.emerald, 2, [6, 4]);
-    drawLine(ctx, time, N, mapX, mapY, THEME.sky, 2);
+    drawLine(ctx, time, N_tot, mapX, mapY, THEME.orange, 2);
+    drawLine(ctx, time, Nn, mapX, mapY, '#3b82f6', 1.5); // North: Blue
+    drawLine(ctx, time, Ns, mapX, mapY, '#f97316', 1.5); // South: Orange
 
-    // Glow on N
-    ctx.save();
-    ctx.shadowColor = THEME.sky;
-    ctx.shadowBlur = 6;
-    drawLine(ctx, time, N, mapX, mapY, THEME.sky, 1);
-    ctx.restore();
-
-    // τ1 marker
+    // Event markers
     drawEventMarker(ctx, mapX, mapY, results.events.tau1, yRange.min, yRange.max,
-      THEME.amber, 'τ₁', margin, plotH);
+      THEME.red, 'Colapso', margin, plotH);
 
     // Legend
     drawLegend(ctx, [
-      { color: THEME.sky, label: 'N(t) População' },
-      { color: THEME.emerald, label: 'K_eff(t) Capacidade', dashed: true }
+      { color: THEME.orange, label: 'N_Total' },
+      { color: '#3b82f6', label: 'N_Norte' },
+      { color: '#f97316', label: 'N_Sul' },
+      { color: THEME.emerald, label: 'K_eff', dashed: true }
     ], margin.left + 4, margin.top + plotH + 26);
   }
 
