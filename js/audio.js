@@ -35,7 +35,10 @@ const AudioEngine = (() => {
   }
 
   function toggle() {
-    if (!audioCtx) init();
+    if (!audioCtx) {
+      init();
+      if (!audioCtx) return false; // init failed
+    }
     
     if (audioCtx.state === 'suspended') {
       audioCtx.resume();

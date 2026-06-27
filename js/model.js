@@ -62,7 +62,24 @@ const StructuralEntropyModel = (() => {
     inequality: 0.5
   };
 
-  function simulate(customParams = {}, customShocks = []) {
+  /**
+   * Linearly interpolate between waypoints at time t.
+   * waypoints: [{t, v}, ...] sorted by t.
+   */
+  function lerp(waypoints, t) {
+    if (!waypoints || waypoints.length === 0) return 0;
+    if (t <= waypoints[0].t) return waypoints[0].v;
+    if (t >= waypoints[waypoints.length - 1].t) return waypoints[waypoints.length - 1].v;
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      if (t >= waypoints[i].t && t <= waypoints[i + 1].t) {
+        const frac = (t - waypoints[i].t) / (waypoints[i + 1].t - waypoints[i].t);
+        return waypoints[i].v + frac * (waypoints[i + 1].v - waypoints[i].v);
+      }
+    }
+    return waypoints[waypoints.length - 1].v;
+  }
+
+  function simulate(customParams = {}, scenario = null, customShocks = []) {
     const p = { ...DEFAULT_PARAMS, ...customParams };
     const steps = Math.ceil((p.t_end - p.t_start) / p.dt);
     
@@ -109,11 +126,13 @@ const StructuralEntropyModel = (() => {
           if (sh.type === 'pandemic') {
             Nn *= (1 - sh.impact * 0.1); Ns *= (1 - sh.impact * 0.5); E *= (1 - sh.impact * 1.5);
             // Pandemic temporarily reduces degradation speed due to lockdowns
-            D = Math.max(0, D - sh.impact * 0.05); 
+            D = Math.max(0, D - sh.impact * 0.05);
+            E = Math.max(0.1, E); // H3: clamp economy after shock
           } else if (sh.type === 'war') {
             Nn *= (1 - sh.impact * 0.2); Ns *= (1 - sh.impact * 0.8); E *= (1 - sh.impact * 2); 
             D += sh.impact * 1.5; // War causes massive immediate degradation and pollution
-            R = Math.max(0.1, R - sh.impact * 2.0); // Destroys resilience
+            R = Math.max(p.R_min, R - sh.impact * 2.0); // H4: use p.R_min
+            E = Math.max(0.1, E); // H3: clamp economy after shock
           } else if (sh.type === 'tech') {
             R += sh.impact; 
             // Real eco-modernism: Tech reduces impact but may increase inequality slightly
@@ -123,20 +142,33 @@ const StructuralEntropyModel = (() => {
         }
       });
 
-      const currentTech = p.tech_innovation;
-      const currentGov = Math.max(p.G_min, p.gov_policy);
+      // C2: Scenario trajectory interpolation
+      const currentTech = scenario && scenario.T ? lerp(scenario.T, t) : p.tech_innovation;
+      const currentGov = Math.max(p.G_min, scenario && scenario.G ? lerp(scenario.G, t) : p.gov_policy);
       
       // K_eff
       const Keff = K0_b * (1 + p.phi * currentTech) * Math.exp(-p.eta5 * D_delayed);
       
       // Delta T
-      const C_eff = p.emissions * (E / 50.0) * Math.exp(-1.5 * currentTech);
-      let deltaT = 0.5 + 4.0 * C_eff + p.eta6 * D; 
+      let deltaT;
+      if (scenario && scenario.deltaT) {
+        deltaT = lerp(scenario.deltaT, t);
+      } else {
+        const C_eff = p.emissions * (E / 50.0) * Math.exp(-1.5 * currentTech);
+        deltaT = 0.5 + 4.0 * C_eff + p.eta6 * D;
+      }
+
+      // Emissions for D calculation (may be overridden by scenario)
+      const scenarioEmissions = scenario && scenario.C ? lerp(scenario.C, t) : p.emissions;
+      const C_eff_D = scenarioEmissions * (E / 50.0) * Math.exp(-1.5 * currentTech);
 
       // Inequality
-      let I = p.inequality + (E / 200.0) - (currentGov * 0.4);
+      const scenarioInequality = scenario && scenario.I ? lerp(scenario.I, t) : p.inequality;
+      let I = scenarioInequality + (E / 200.0) - (currentGov * 0.4);
       I = Math.max(0.1, Math.min(1.0, I));
-      const U = p.omega * p.land_use * (E / 60.0) * Math.exp(-1.0 * currentTech);
+      const scenarioLandUse = scenario && scenario.U ? lerp(scenario.U, t) : p.land_use;
+      const scenarioPollution = scenario && scenario.P ? lerp(scenario.P, t) : p.pollution;
+      const U = p.omega * scenarioLandUse * (E / 60.0) * Math.exp(-1.0 * currentTech);
 
       // Entropia (lambda) com pesos completos
       const N_total = Nn + Ns;
@@ -157,7 +189,7 @@ const StructuralEntropyModel = (() => {
 
       // Persistence of Collapse
       if (lambda >= p.lambda_crit) collapseTimer += p.dt;
-      else if (collapseTimer > 0) collapseTimer -= p.dt * 0.5;
+      else if (collapseTimer > 0) collapseTimer -= p.dt * (1 / p.tau_r); // H11: use tau_r parameter
 
       Nn_arr[i] = Nn; Ns_arr[i] = Ns; E_arr[i] = E; D_arr[i] = D; R_arr[i] = R;
       lambda_arr[i] = lambda; Keff_arr[i] = Keff; deltaT_arr[i] = deltaT;
@@ -186,7 +218,7 @@ const StructuralEntropyModel = (() => {
       const damage = (D * 0.5) + (Math.max(0, deltaT - 1.5) * 0.1) + (collapseTimer > 0 ? 0.05 : 0); 
       const dE = 0.035 * E * (1 - E / 150.0) - (damage * E);
 
-      const dD = (p.alpha2 * U * E) + (p.alpha3 * p.pollution * N_total) + (p.alpha1 * C_eff) - (p.beta_D * R);
+      const dD = (p.alpha2 * U * E) + (p.alpha3 * scenarioPollution * N_total) + (p.alpha1 * C_eff_D) - (p.beta_D * R);
       
       const dR = (p.rho_G * currentGov) - (p.rho_D * D) - (p.rho_lambda * lambda);
 
@@ -206,5 +238,29 @@ const StructuralEntropyModel = (() => {
     };
   }
 
-  return { DEFAULT_PARAMS, simulate };
+  /**
+   * C3: Export simulation results as CSV string.
+   */
+  function toCSV(results) {
+    const headers = ['Year', 'Nn', 'Ns', 'E', 'D', 'R', 'Lambda', 'Keff', 'DeltaT', 'U', 'I'];
+    const lines = [headers.join(',')];
+    for (let i = 0; i < results.length; i++) {
+      lines.push([
+        results.time[i].toFixed(2),
+        results.Nn[i].toFixed(6),
+        results.Ns[i].toFixed(6),
+        results.E[i].toFixed(6),
+        results.D[i].toFixed(6),
+        results.R[i].toFixed(6),
+        results.lambda[i].toFixed(6),
+        results.Keff[i].toFixed(6),
+        results.deltaT[i].toFixed(6),
+        results.U[i].toFixed(6),
+        results.I[i].toFixed(6)
+      ].join(','));
+    }
+    return lines.join('\n');
+  }
+
+  return { DEFAULT_PARAMS, simulate, toCSV };
 })();

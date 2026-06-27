@@ -25,6 +25,7 @@ const ChartEngine = (() => {
     cyan:       '#06b6d4',
     emerald:    '#10b981',
     amber:      '#f59e0b',
+    orange:     '#f97316',
     red:        '#ef4444',
     purple:     '#8b5cf6',
     rose:       '#f43f5e',
@@ -288,7 +289,7 @@ const ChartEngine = (() => {
     const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
       results.params.t_start, results.params.t_end,
       yRange.min, yRange.max, {
-        title: 'λ(t) — Pressão Entrópica Estrutural',
+        title: typeof I18n !== 'undefined' ? I18n.getText('chart-lambda-title-full') : 'λ(t) — Pressão Entrópica Estrutural',
         yLabel: 'λ',
         yFormat: v => v.toFixed(2),
         yTicks: 6
@@ -382,7 +383,7 @@ const ChartEngine = (() => {
     const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
       results.params.t_start, results.params.t_end,
       yRange.min, yRange.max, {
-        title: 'N(t) vs K_eff(t) — População e Capacidade de Suporte',
+        title: typeof I18n !== 'undefined' ? I18n.getText('chart-pop-title-full') : 'N(t) vs K_eff(t) — População e Capacidade de Suporte',
         yLabel: 'Pessoas (Bilhões)',
         yTicks: 6
       });
@@ -432,7 +433,7 @@ const ChartEngine = (() => {
     const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
       results.params.t_start, results.params.t_end,
       0, 1, {
-        title: 'D(t) vs R(t) — Degradação e Resiliência',
+        title: typeof I18n !== 'undefined' ? I18n.getText('chart-deg-title-full') : 'D(t) vs R(t) — Degradação e Resiliência',
         yLabel: 'Nível [0,1]',
         yFormat: v => v.toFixed(2),
         yTicks: 5
@@ -491,7 +492,7 @@ const ChartEngine = (() => {
     ctx.fillStyle = THEME.textBright;
     ctx.font = 'bold 13px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Painel de Estado do Sistema (2100)', w / 2, 24);
+    ctx.fillText(typeof I18n !== 'undefined' ? I18n.getText('chart-dashboard-title') : 'Painel de Estado do Sistema', w / 2, 24);
 
     // Draw gauges in a 2x3 grid
     const gauges = [
@@ -499,8 +500,8 @@ const ChartEngine = (() => {
       { label: 'N/K_eff', value: finalN / Math.max(finalKeff, 1), max: 2, color: finalN > finalKeff ? THEME.red : THEME.sky, format: v => v.toFixed(3) },
       { label: 'Degradação', value: finalD, max: 1, color: finalD > 0.5 ? THEME.red : finalD > 0.3 ? THEME.amber : THEME.emerald, format: v => (v * 100).toFixed(1) + '%' },
       { label: 'Resiliência', value: finalR, max: 1, color: finalR < 0.2 ? THEME.red : finalR < 0.4 ? THEME.amber : THEME.emerald, format: v => (v * 100).toFixed(1) + '%' },
-      { label: 'Pop. (bilhões)', value: finalN / 1e9, max: 15, color: THEME.sky, format: v => v.toFixed(2) + 'B' },
-      { label: 'K_eff (bilhões)', value: finalKeff / 1e9, max: 15, color: THEME.emerald, format: v => v.toFixed(2) + 'B' }
+      { label: 'Pop. (bilhões)', value: finalN, max: 15, color: THEME.sky, format: v => v.toFixed(2) + 'B' },
+      { label: 'K_eff (bilhões)', value: finalKeff, max: 15, color: THEME.emerald, format: v => v.toFixed(2) + 'B' }
     ];
 
     const cols = 3;
@@ -536,13 +537,13 @@ const ChartEngine = (() => {
     // System status
     let status, statusColor;
     if (finalLambda < lambdaCrit * 0.6) {
-      status = '● ESTÁVEL'; statusColor = THEME.emerald;
+      status = typeof I18n !== 'undefined' ? I18n.getText('status-stable-label') : '● ESTÁVEL'; statusColor = THEME.emerald;
     } else if (finalLambda < lambdaCrit) {
-      status = '● ALERTA'; statusColor = THEME.amber;
+      status = typeof I18n !== 'undefined' ? I18n.getText('status-alert-label') : '● ALERTA'; statusColor = THEME.amber;
     } else if (finalLambda < lambdaCrit * 1.3) {
-      status = '● CRÍTICO'; statusColor = THEME.red;
+      status = typeof I18n !== 'undefined' ? I18n.getText('status-critical-label') : '● CRÍTICO'; statusColor = THEME.red;
     } else {
-      status = '● COLAPSO'; statusColor = THEME.rose;
+      status = typeof I18n !== 'undefined' ? I18n.getText('status-collapse-label') : '● COLAPSO'; statusColor = THEME.rose;
     }
     ctx.font = 'bold 12px Inter, system-ui, sans-serif';
     ctx.fillStyle = statusColor;
@@ -607,7 +608,7 @@ const ChartEngine = (() => {
     
     // X Axis = Population (N)
     let nMin = 0;
-    let nMax = 15e9; // 15 Billion max 
+    let nMax = 15; // 15 Billion max (model outputs in billions)
     
     // Y Axis = Lambda
     let lMin = 0;
@@ -616,7 +617,7 @@ const ChartEngine = (() => {
     const { plotW, plotH, mapX, mapY } = drawGrid(ctx, w, h, margin,
       nMin, nMax,
       lMin, lMax, {
-        title: 'Espaço de Fase: N vs λ (Trajetória de Atração)',
+        title: typeof I18n !== 'undefined' ? I18n.getText('chart-phase-title-full') : 'Espaço de Fase: N vs λ (Trajetória de Atração)',
         xLabel: 'População (N)',
         yLabel: 'Entropia (λ)',
         yFormat: v => v.toFixed(2),
@@ -670,7 +671,7 @@ const ChartEngine = (() => {
     ctx.fill();
     ctx.fillStyle = THEME.text;
     ctx.font = '10px Inter';
-    ctx.fillText('1970', mapX(N_tot[0]) - 15, mapY(lambda[0]) + 15);
+    ctx.fillText(results.params.t_start.toString(), mapX(N_tot[0]) - 15, mapY(lambda[0]) + 15);
 
     // End point marker (2100)
     const lastIdx = N_tot.length - 1;
@@ -687,15 +688,15 @@ const ChartEngine = (() => {
     ctx.restore();
     
     ctx.fillStyle = THEME.textBright;
-    ctx.fillText('2100', mapX(N_tot[lastIdx]) + 15, mapY(lambda[lastIdx]) + 5);
+    ctx.fillText(results.params.t_end.toString(), mapX(N_tot[lastIdx]) + 15, mapY(lambda[lastIdx]) + 5);
 
     // Label the zones
     ctx.fillStyle = 'rgba(16,185,129,0.3)';
     ctx.font = 'bold 12px Inter';
-    ctx.fillText('Atrator Estável', margin.left + plotW / 2, mapY(lMin + (results.params.lambda_crit - lMin)/2));
+    ctx.fillText(typeof I18n !== 'undefined' ? I18n.getText('zone-stable') : 'Atrator Estável', margin.left + plotW / 2, mapY(lMin + (results.params.lambda_crit - lMin)/2));
     
     ctx.fillStyle = 'rgba(239,68,68,0.3)';
-    ctx.fillText('Zona de Colapso (Ruptura)', margin.left + plotW / 2, mapY(results.params.lambda_crit + (lMax - results.params.lambda_crit)/2));
+    ctx.fillText(typeof I18n !== 'undefined' ? I18n.getText('zone-collapse') : 'Zona de Colapso (Ruptura)', margin.left + plotW / 2, mapY(results.params.lambda_crit + (lMax - results.params.lambda_crit)/2));
   }
 
   // ── Public API ────────────────────────────────────────────────────

@@ -39,6 +39,13 @@
 
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --sidebar-width: 340px;
+
+  /* Missing vars (referenced but undefined) */
+  --border: 1px solid rgba(148, 163, 184, 0.12);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --radius: 12px;
+  --text-bright: #f1f5f9;
+  --yellow: #f59e0b;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────── */
@@ -217,6 +224,12 @@ body::before {
   font-weight: 600;
   margin-right: 8px;
   white-space: nowrap;
+}
+
+.scenario-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .scenario-btn {

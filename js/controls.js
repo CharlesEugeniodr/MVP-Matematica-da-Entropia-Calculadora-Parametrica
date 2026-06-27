@@ -349,8 +349,13 @@ const Controls = (() => {
     }
 
     const injectShock = (type) => {
-      // Injeta o choque num ano próximo do atual (ex: 2026) para visualização clara
-      currentShocks.push({ year: 2026 + Math.floor(Math.random() * 5), type: type });
+      const currentYear = new Date().getFullYear();
+      const impactMap = { pandemic: 0.15, war: 0.25, tech: 0.3 };
+      currentShocks.push({ 
+        year: currentYear + Math.floor(Math.random() * 5), 
+        type: type, 
+        impact: impactMap[type] || 0.1 
+      });
       if (typeof AudioEngine !== 'undefined') AudioEngine.playShockAlert(type);
       triggerChange();
     };
@@ -440,7 +445,21 @@ const Controls = (() => {
    * Get current parameters.
    */
   function getParams() {
-    return Object.assign({}, currentParams);
+    const p = Object.assign({}, currentParams);
+    // Apply regulators
+    if (currentRegulators.gov !== 0) {
+      const factor = currentRegulators.gov / 100;
+      p.gov_policy = Math.max(0, Math.min(1, p.gov_policy + factor * 0.5));
+      p.rho_G = Math.max(0, p.rho_G * (1 + factor));
+      p.R0 = Math.max(0.1, Math.min(1, p.R0 + factor * 0.3));
+    }
+    if (currentRegulators.deg !== 0) {
+      const factor = currentRegulators.deg / 100;
+      p.emissions = Math.max(0, Math.min(1, p.emissions + factor * 0.5));
+      p.land_use = Math.max(0, Math.min(1, p.land_use + factor * 0.5));
+      p.pollution = Math.max(0, Math.min(1, p.pollution + factor * 0.5));
+    }
+    return p;
   }
 
   /**

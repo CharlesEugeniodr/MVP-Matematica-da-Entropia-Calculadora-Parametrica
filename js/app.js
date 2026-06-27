@@ -134,7 +134,7 @@ const App = (() => {
 
     html2pdf().set(opt).from(tempContainer).save().then(() => {
       document.body.removeChild(tempContainer); // Cleanup
-    });
+    }).catch(() => { if (tempContainer.parentNode) document.body.removeChild(tempContainer); });
   }
 
   /**
@@ -165,7 +165,7 @@ const App = (() => {
 
     // Run simulation
     try {
-      currentResults = StructuralEntropyModel.simulate(params, shocks);
+      currentResults = StructuralEntropyModel.simulate(params, scenario, shocks);
       Controls._lastResults = currentResults;
 
       const elapsed = (performance.now() - t0).toFixed(1);
@@ -190,7 +190,7 @@ const App = (() => {
     } catch (err) {
       console.error('Erro na simulação:', err);
       const info = document.getElementById('sim-info');
-      if (info) info.innerHTML = `<span style="color: var(--red)">Erro: ${err.message}</span>`;
+      if (info) info.textContent = 'Erro: ' + err.message;
     }
 
     isRunning = false;
@@ -299,8 +299,8 @@ const App = (() => {
         <thead>
           <tr>
             <th>Parâmetro / Variável</th>
-            <th>Valor Inicial (1970)</th>
-            <th>Valor Final (2100)</th>
+            <th>Valor Inicial (${results.params.t_start})</th>
+            <th>Valor Final (${results.params.t_end})</th>
             <th>Variação / Impacto</th>
           </tr>
         </thead>
@@ -325,7 +325,7 @@ const App = (() => {
           </tr>
           <tr>
             <td><strong>Anomalia Térmica (ΔT)</strong></td>
-            <td>+0.50 °C</td>
+            <td>+${results.deltaT[0].toFixed(2)} °C</td>
             <td>+${dt_end} °C</td>
             <td>Catálise Entrópica</td>
           </tr>
@@ -586,6 +586,8 @@ const App = (() => {
       
     }, 50);
   }
+
+  window.addEventListener('beforeunload', () => { if (clockInterval) clearInterval(clockInterval); });
 
   // ── Boot ──────────────────────────────────────────────────────
   if (document.readyState === 'loading') {

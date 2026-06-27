@@ -59,7 +59,32 @@ const I18n = (() => {
     'status-collapse': { pt: 'Colapso em Andamento', en: 'Collapse in Progress' },
 
     // Monitor
-    'monitor-title': { pt: '📡 Monitor Global de Anomalias', en: '📡 Global Anomaly Monitor' }
+    'monitor-title': { pt: '📡 Monitor Global de Anomalias', en: '📡 Global Anomaly Monitor' },
+
+    // Tabs
+    'tab-sim': { pt: 'Simulador Global', en: 'Global Simulator' },
+    'tab-audit': { pt: 'Auditoria de Dados', en: 'Data Audit' },
+
+    // Audit page
+    'audit-title': { pt: 'Laudo Técnico e Auditoria do Modelo', en: 'Technical Report and Model Audit' },
+    'audit-desc': { pt: 'Exposição dos tensores analíticos, parâmetros processados pelo motor Estocástico DDE e registros de ocorrências estruturais.', en: 'Analytical tensor exposition, parameters processed by the Stochastic DDE engine, and structural occurrence logs.' },
+
+    // Chart titles (for canvas rendering)
+    'chart-lambda-title-full': { pt: 'λ(t) — Pressão Entrópica Estrutural', en: 'λ(t) — Structural Entropic Pressure' },
+    'chart-pop-title-full': { pt: 'N(t) vs K_eff(t) — População e Capacidade de Suporte', en: 'N(t) vs K_eff(t) — Population and Carrying Capacity' },
+    'chart-deg-title-full': { pt: 'D(t) vs R(t) — Degradação e Resiliência', en: 'D(t) vs R(t) — Degradation and Resilience' },
+    'chart-dashboard-title': { pt: 'Painel de Estado do Sistema', en: 'System State Dashboard' },
+    'chart-phase-title-full': { pt: 'Espaço de Fase: N vs λ (Trajetória de Atração)', en: 'Phase Space: N vs λ (Attractor Trajectory)' },
+
+    // Dashboard status labels
+    'status-stable-label': { pt: '● ESTÁVEL', en: '● STABLE' },
+    'status-alert-label': { pt: '● ALERTA', en: '● ALERT' },
+    'status-critical-label': { pt: '● CRÍTICO', en: '● CRITICAL' },
+    'status-collapse-label': { pt: '● COLAPSO', en: '● COLLAPSE' },
+
+    // Phase space zone labels
+    'zone-stable': { pt: 'Atrator Estável', en: 'Stable Attractor' },
+    'zone-collapse': { pt: 'Zona de Colapso (Ruptura)', en: 'Collapse Zone (Rupture)' }
   };
 
   const newsFeeds = {

@@ -19,7 +19,7 @@ const Scenarios = (() => {
     color: '#10b981',
     icon:  '🌿',
     description: 'Transição rápida para energias limpas, governança forte, tecnologia verde e redução da desigualdade.',
-    overrides: { r_N: 0.002, eta5: 0.3, phi: 1.5, rho_G: 0.05, rho_D: 0.05 },
+    overrides: { r_N: 0.002, eta5: 0.3, phi: 1.5, rho_G: 0.05, rho_D: 0.008 },
     deltaT: [
       { t: 1970, v: 0.0 },
       { t: 1990, v: 0.3 },
@@ -53,7 +53,7 @@ const Scenarios = (() => {
       { t: 2100, v: 0.80 }
     ],
     I: [
-      { t: 1970, v: 0.40 },
+      { t: 1970, v: 0.30 },
       { t: 1990, v: 0.38 },
       { t: 2010, v: 0.35 },
       { t: 2030, v: 0.30 },
@@ -217,6 +217,7 @@ const Scenarios = (() => {
     color: '#8b5cf6',
     icon:  '⚡',
     description: 'Avanço tecnológico forte mas sem coordenação política. Desigualdade alta, governança mínima.',
+    overrides: { r_N: 0.010, eta5: 1.0, phi: 1.8, rho_G: 0.008, rho_D: 0.015 },
     deltaT: [
       { t: 1970, v: 0.0 },
       { t: 1990, v: 0.35 },
@@ -283,6 +284,7 @@ const Scenarios = (() => {
     color: '#06b6d4',
     icon:  '🎛️',
     description: 'Crie seu próprio cenário ajustando todos os parâmetros e trajetórias.',
+    overrides: {},
     deltaT: [
       { t: 1970, v: 0.0 },
       { t: 2000, v: 0.5 },
@@ -359,7 +361,7 @@ const Scenarios = (() => {
         const v0 = wp[0].v;
         const vEnd = endpoints[v];
         for (let i = 1; i < wp.length; i++) {
-          const frac = (wp[i].t - 1970) / (2100 - 1970);
+          const frac = (wp[i].t - wp[0].t) / (wp[wp.length-1].t - wp[0].t);
           // Slight curve: quadratic ease
           const ease = frac * frac * 0.4 + frac * 0.6;
           wp[i].v = v0 + (vEnd - v0) * ease;
