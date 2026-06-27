@@ -511,10 +511,13 @@ const App = (() => {
     if (!clockDisplay || !feed || !clockStatus) return;
 
     // Use current real-world year
-    const currentYear = Math.max(1970, Math.min(2099, new Date().getFullYear()));
+    const currentYear = Math.max(results.params.t_start, Math.min(results.params.t_end, new Date().getFullYear()));
     const dt = results.params.dt;
     const stepsPerYear = Math.round(1 / dt);
-    const idx = (currentYear - 1970) * stepsPerYear;
+    
+    let idx = (currentYear - results.params.t_start) * stepsPerYear;
+    if (idx < 0) idx = 0;
+    if (idx >= results.lambda.length) idx = results.lambda.length - 1;
 
     const lambda1 = results.lambda[idx];
     const lambda2 = results.lambda[idx + stepsPerYear] || results.lambda[results.lambda.length-1];
@@ -542,7 +545,7 @@ const App = (() => {
     
     // Scan the array up to 2100 to populate past and future predicted events based on current scenario
     for (let i = 1; i < results.lambda.length; i++) {
-       const yr = 1970 + Math.floor(i * dt);
+       const yr = results.params.t_start + Math.floor(i * dt);
        if (results.lambda[i] >= crit && results.lambda[i-1] < crit) {
          const t = yr <= currentYear ? 'passado' : 'projetado';
          feed.innerHTML += `<div class="feed-item danger">[${yr}] ⚠️ RUPTURA SISTÊMICA (${t}): A entropia superou o limite da biosfera.</div>`;

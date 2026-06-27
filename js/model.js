@@ -107,11 +107,18 @@ const StructuralEntropyModel = (() => {
       shocks.forEach(sh => {
         if (t >= sh.year && t < sh.year + p.dt) {
           if (sh.type === 'pandemic') {
-            Nn *= (1 - sh.impact); Ns *= (1 - sh.impact*1.5); E *= (1 - sh.impact*2);
+            Nn *= (1 - sh.impact * 0.1); Ns *= (1 - sh.impact * 0.5); E *= (1 - sh.impact * 1.5);
+            // Pandemic temporarily reduces degradation speed due to lockdowns
+            D = Math.max(0, D - sh.impact * 0.05); 
           } else if (sh.type === 'war') {
-            Nn *= (1 - sh.impact*0.5); Ns *= (1 - sh.impact); E *= (1 - sh.impact*3); D += sh.impact;
+            Nn *= (1 - sh.impact * 0.2); Ns *= (1 - sh.impact * 0.8); E *= (1 - sh.impact * 2); 
+            D += sh.impact * 1.5; // War causes massive immediate degradation and pollution
+            R = Math.max(0.1, R - sh.impact * 2.0); // Destroys resilience
           } else if (sh.type === 'tech') {
-            R += sh.impact; E *= (1 + sh.impact);
+            R += sh.impact; 
+            // Real eco-modernism: Tech reduces impact but may increase inequality slightly
+            // We simulate the 'clean' tech shock by boosting Keff explicitly via R and lowering D
+            D = Math.max(0, D - sh.impact * 0.5);
           }
         }
       });
@@ -123,13 +130,13 @@ const StructuralEntropyModel = (() => {
       const Keff = K0_b * (1 + p.phi * currentTech) * Math.exp(-p.eta5 * D_delayed);
       
       // Delta T
-      const C_eff = p.emissions * (E / 50.0);
+      const C_eff = p.emissions * (E / 50.0) * Math.exp(-1.5 * currentTech);
       let deltaT = 0.5 + 4.0 * C_eff + p.eta6 * D; 
 
       // Inequality
       let I = p.inequality + (E / 200.0) - (currentGov * 0.4);
       I = Math.max(0.1, Math.min(1.0, I));
-      const U = p.omega * p.land_use * (E / 60.0);
+      const U = p.omega * p.land_use * (E / 60.0) * Math.exp(-1.0 * currentTech);
 
       // Entropia (lambda) com pesos completos
       const N_total = Nn + Ns;
