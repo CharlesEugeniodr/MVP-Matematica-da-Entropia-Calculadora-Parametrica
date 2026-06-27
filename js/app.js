@@ -197,7 +197,7 @@ const App = (() => {
     const finalLambda = results.lambda[results.length - 1];
     const lambdaCrit  = results.params.lambda_crit;
     const finalN = (results.N[results.length - 1] / 1e9).toFixed(2);
-    const finalK = (results.K_eff[results.length - 1] / 1e9).toFixed(2);
+    const finalK = (results.Keff[results.length - 1] / 1e9).toFixed(2);
     const finalD = results.D[results.length - 1].toFixed(2);
     
     let statusText = '';
@@ -345,10 +345,12 @@ const App = (() => {
 
     // Use current real-world year
     const currentYear = Math.max(1970, Math.min(2099, new Date().getFullYear()));
-    const idx = currentYear - 1970;
+    const dt = results.params.dt;
+    const stepsPerYear = Math.round(1 / dt);
+    const idx = (currentYear - 1970) * stepsPerYear;
 
     const lambda1 = results.lambda[idx];
-    const lambda2 = results.lambda[idx+1];
+    const lambda2 = results.lambda[idx + stepsPerYear] || results.lambda[results.lambda.length-1];
     
     // Check Status
     const crit = results.params.lambda_crit;
@@ -373,7 +375,7 @@ const App = (() => {
     
     // Scan the array up to 2100 to populate past and future predicted events based on current scenario
     for (let i = 1; i < results.lambda.length; i++) {
-       const yr = 1970 + i;
+       const yr = 1970 + Math.floor(i * dt);
        if (results.lambda[i] >= crit && results.lambda[i-1] < crit) {
          const t = yr <= currentYear ? 'passado' : 'projetado';
          feed.innerHTML += `<div class="feed-item danger">[${yr}] ⚠️ RUPTURA SISTÊMICA (${t}): A entropia superou o limite da biosfera.</div>`;
@@ -401,7 +403,7 @@ const App = (() => {
       
       const currentLambda = lambda1 + ((lambda2 - lambda1) * fraction);
       const deltaT1 = results.deltaT[idx];
-      const deltaT2 = results.deltaT[idx+1];
+      const deltaT2 = results.deltaT[idx+stepsPerYear] || results.deltaT[results.deltaT.length-1];
       const currentDeltaT = deltaT1 + ((deltaT2 - deltaT1) * fraction);
       
       // Impostômetro trick: fast-spinning noisy fraction to simulate quantum/chaotic micro-fluctuations
