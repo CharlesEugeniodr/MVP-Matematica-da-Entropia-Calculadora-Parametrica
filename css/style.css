@@ -159,6 +159,32 @@ body::before {
   cursor: default;
 }
 
+.audit-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--sky);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.audit-bar h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+#audit-content {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+#audit-content strong {
+  color: var(--sky);
+}
+
 .equation-item:hover {
   background: rgba(6,182,212,0.08);
   border-color: var(--border-glow);

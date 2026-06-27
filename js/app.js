@@ -79,6 +79,7 @@ const App = (() => {
 
       const elapsed = (performance.now() - t0).toFixed(1);
       updateSimInfo(elapsed, currentResults);
+      updateAuditReport(currentResults);
 
       // Re-attach tooltips with new data
       ChartEngine.attachTooltip('chart-lambda', currentResults, 'lambda');
@@ -139,6 +140,42 @@ const App = (() => {
     info.innerHTML = `${statusIcon} ${scenarioName} · λ₂₁₀₀ = ${finalLambda.toFixed(3)} · `
       + `<span class="timing">${elapsed}ms</span> · `
       + `${results.length} pontos`;
+  }
+
+  /**
+   * Update the textual Audit and Scenario Report.
+   */
+  function updateAuditReport(results) {
+    const content = document.getElementById('audit-content');
+    if (!content) return;
+
+    const scenarioId = Controls.getScenarioId();
+    const sc = Scenarios.ALL.find(s => s.id === scenarioId);
+    const scenarioName = sc ? sc.name : scenarioId;
+
+    const finalLambda = results.lambda[results.length - 1];
+    const lambdaCrit  = results.params.lambda_crit;
+    const finalN = (results.N[results.length - 1] / 1e9).toFixed(2);
+    const finalK = (results.K_eff[results.length - 1] / 1e9).toFixed(2);
+    const finalD = results.D[results.length - 1].toFixed(2);
+    
+    let statusText = '';
+    if (finalLambda < lambdaCrit * 0.6) {
+      statusText = '<span style="color:var(--emerald);">O sistema apresenta alta coerência estrutural e resiliência. A órbita demográfica encontra-se segura dentro do Atrator Estável.</span>';
+    } else if (finalLambda < lambdaCrit) {
+      statusText = '<span style="color:var(--yellow);">O sistema está sob estresse moderado. A entropia aproxima-se de níveis de alerta, exigindo intervenções em governança ou mitigação para evitar o Tipping Point.</span>';
+    } else if (finalLambda < lambdaCrit * 1.3) {
+      statusText = '<span style="color:var(--red);">ALERTA CRÍTICO: O sistema rompeu o limiar de resiliência (λ > λ_crit). A capacidade de suporte global está em degradação acelerada devido à entropia excessiva.</span>';
+    } else {
+      statusText = '<span style="color:#b91c1c; font-weight:bold;">COLAPSO SISTÊMICO: A Entropia Estrutural causou a falência irreversível da capacidade de suporte, forçando uma correção demográfica drástica.</span>';
+    }
+
+    content.innerHTML = `
+      <strong>Cenário Projetado:</strong> ${scenarioName} <br>
+      <strong>Projeção Demográfica (2100):</strong> ${finalN} Bilhões de habitantes (Capacidade de Suporte: ${finalK} Bilhões)<br>
+      <strong>Entropia Estrutural Final (λ):</strong> ${finalLambda.toFixed(3)} (Limiar de Colapso Sistêmico: ${lambdaCrit}) <br>
+      <strong>Auditoria do Modelo:</strong> ${statusText}
+    `;
   }
 
   /**
