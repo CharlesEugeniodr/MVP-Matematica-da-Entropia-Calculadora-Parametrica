@@ -13,6 +13,7 @@ const App = (() => {
   let isRunning = false;
   let resizeTimeout = null;
   let animationFrame = null;
+  let clockInterval = null;
 
   /**
    * Initialize the application.
@@ -92,6 +93,9 @@ const App = (() => {
 
       // Trigger pulse animations on critical events
       triggerEventAnimations(currentResults);
+      
+      // Start Live Atomic Clock and Feed
+      startLiveMonitor(currentResults);
 
     } catch (err) {
       console.error('Erro na simulação:', err);
@@ -260,6 +264,84 @@ const App = (() => {
         modal.classList.remove('active');
       }
     });
+  }
+
+  /**
+   * Start the Live Atomic Clock and Catastrophe Monitor Feed
+   */
+  function startLiveMonitor(results) {
+    if (clockInterval) clearInterval(clockInterval);
+
+    const clockDisplay = document.getElementById('atomic-clock-display');
+    const clockStatus = document.getElementById('atomic-clock-status');
+    const feed = document.getElementById('catastrophe-feed');
+    if (!clockDisplay || !feed || !clockStatus) return;
+
+    // Use current real-world year
+    const currentYear = Math.max(1970, Math.min(2099, new Date().getFullYear()));
+    const idx = currentYear - 1970;
+
+    const lambda1 = results.lambda[idx];
+    const lambda2 = results.lambda[idx+1];
+    
+    // Check Status
+    const crit = results.params.lambda_crit;
+    if (lambda1 >= crit) {
+      clockDisplay.classList.add('critical');
+      clockStatus.classList.add('critical');
+      clockStatus.textContent = 'Colapso em Andamento';
+    } else if (lambda1 >= crit * 0.8) {
+      clockDisplay.classList.remove('critical');
+      clockStatus.classList.remove('critical');
+      clockStatus.style.color = 'var(--yellow)';
+      clockStatus.textContent = 'Alerta Crítico';
+    } else {
+      clockDisplay.classList.remove('critical');
+      clockStatus.classList.remove('critical');
+      clockStatus.style.color = 'var(--emerald)';
+      clockStatus.textContent = 'Órbita Estável';
+    }
+
+    // Populate feed
+    feed.innerHTML = '<div class="feed-item sys-msg">Sistema de monitoramento conectado.</div>';
+    
+    // Scan the array up to 2100 to populate past and future predicted events based on current scenario
+    for (let i = 1; i < results.lambda.length; i++) {
+       const yr = 1970 + i;
+       if (results.lambda[i] >= crit && results.lambda[i-1] < crit) {
+         const t = yr <= currentYear ? 'passado' : 'projetado';
+         feed.innerHTML += `<div class="feed-item danger">[${yr}] ⚠️ RUPTURA SISTÊMICA (${t}): A entropia superou o limite da biosfera.</div>`;
+       }
+    }
+    
+    // Include manual shocks injected by user
+    const shocks = Controls.getShocks();
+    shocks.forEach(sh => {
+       let name = sh.type === 'pandemic' ? '🦠 Pandemia Global' : (sh.type === 'war' ? '⚔️ Conflito Global' : '💡 Salto Tecnológico');
+       let cls = sh.type === 'tech' ? 'shock' : 'danger';
+       feed.innerHTML += `<div class="feed-item ${cls}">[${sh.year}] Choque Injetado: ${name}</div>`;
+    });
+    
+    feed.innerHTML += `<div class="feed-item sys-msg">[Real-Time] Escaneando oscilações estruturais...</div>`;
+    feed.scrollTop = feed.scrollHeight;
+
+    // Clock Animation
+    const startOfThisYear = new Date(currentYear, 0, 1).getTime();
+    const msInYear = 31556952000; // 365.2425 days
+    
+    clockInterval = setInterval(() => {
+      const nowMs = Date.now();
+      const fraction = (nowMs - startOfThisYear) / msInYear;
+      
+      const currentLambda = lambda1 + ((lambda2 - lambda1) * fraction);
+      
+      // Impostômetro trick: fast-spinning noisy fraction to simulate quantum/chaotic micro-fluctuations
+      const noise = (Math.random() * 0.000000009); 
+      
+      const displayVal = (currentLambda + noise).toFixed(9);
+      clockDisplay.textContent = displayVal;
+      
+    }, 50);
   }
 
   // ── Boot ──────────────────────────────────────────────────────
