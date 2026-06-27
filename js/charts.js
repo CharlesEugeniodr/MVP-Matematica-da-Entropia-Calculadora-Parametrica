@@ -779,8 +779,7 @@ const ChartEngine = (() => {
 
   return {
     renderAll,
-    attachTooltip,
-    renderSeismograph
+    attachTooltip
   };
 
 })();
