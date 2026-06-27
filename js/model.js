@@ -80,8 +80,11 @@ const StructuralEntropyModel = (() => {
     const I_arr = new Float64Array(steps + 1);
     
     // Distribuindo N0 entre Norte (28%) e Sul (72%) para simular 1970
-    let Nn = p.N0 * 0.28;
-    let Ns = p.N0 * 0.72;
+    // Parâmetros K0 e N0 vêm em valores absolutos (ex: 12e9), mas a matemática usa bilhões (12.0)
+    let Nn = (p.N0 / 1e9) * 0.28;
+    let Ns = (p.N0 / 1e9) * 0.72;
+    const K0_b = p.K0 / 1e9;
+    
     let E = 3.4; // Trilhão USD Proxy
     let D = p.D0;
     let R = p.R0;
@@ -117,7 +120,7 @@ const StructuralEntropyModel = (() => {
       const currentGov = Math.max(p.G_min, p.gov_policy);
       
       // K_eff
-      const Keff = p.K0 * (1 + p.phi * currentTech) * Math.exp(-p.eta5 * D_delayed);
+      const Keff = K0_b * (1 + p.phi * currentTech) * Math.exp(-p.eta5 * D_delayed);
       
       // Delta T
       const C_eff = p.emissions * (E / 50.0);
