@@ -771,113 +771,112 @@ const ChartEngine = (() => {
 
 })();
 
- / /    % %  L i v e   S e i s m o g r a p h    % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
- c o n s t   S e i s m o g r a p h   =   ( ( )   = >   { 
-     l e t   c a n v a s ,   c t x ; 
-     l e t   a n i m F r a m e   =   n u l l ; 
-     l e t   c u r r e n t L a m b d a   =   0 ,   c u r r e n t D e l t a T   =   0 ,   l a m b d a C r i t   =   1 . 0 ; 
-     l e t   t i m e P o s   =   0 ; 
-     l e t   p o i n t s   =   [ ] ; 
-     c o n s t   m a x P o i n t s   =   2 0 0 ; 
- 
-     f u n c t i o n   i n i t ( c a n v a s I d )   { 
-         c a n v a s   =   d o c u m e n t . g e t E l e m e n t B y I d ( c a n v a s I d ) ; 
-         i f   ( c a n v a s )   { 
-             c t x   =   c a n v a s . g e t C o n t e x t ( ' 2 d ' ) ; 
-             / /   F i x   r e s o l u t i o n 
-             c o n s t   d p r   =   w i n d o w . d e v i c e P i x e l R a t i o   | |   1 ; 
-             c o n s t   r e c t   =   c a n v a s . p a r e n t N o d e . g e t B o u n d i n g C l i e n t R e c t ( ) ; 
-             c a n v a s . w i d t h   =   r e c t . w i d t h   *   d p r ; 
-             c a n v a s . h e i g h t   =   r e c t . h e i g h t   *   d p r ; 
-             c t x . s c a l e ( d p r ,   d p r ) ; 
-             c a n v a s . s t y l e . w i d t h   =   \ \ p x \ ; 
-             c a n v a s . s t y l e . h e i g h t   =   \ \ p x \ ; 
-             
-             f o r ( l e t   i = 0 ;   i < m a x P o i n t s ;   i + + )   p o i n t s . p u s h ( 0 ) ; 
-             i f ( ! a n i m F r a m e )   l o o p ( ) ; 
-         } 
-     } 
- 
-     f u n c t i o n   u p d a t e P a r a m s ( l a m b d a ,   c r i t ,   d e l t a T )   { 
-         c u r r e n t L a m b d a   =   l a m b d a ; 
-         l a m b d a C r i t   =   c r i t ; 
-         c u r r e n t D e l t a T   =   d e l t a T ; 
-     } 
- 
-     f u n c t i o n   l o o p ( )   { 
-         i f   ( ! c t x )   r e t u r n ; 
-         c o n s t   w   =   c a n v a s . w i d t h   /   ( w i n d o w . d e v i c e P i x e l R a t i o   | |   1 ) ; 
-         c o n s t   h   =   c a n v a s . h e i g h t   /   ( w i n d o w . d e v i c e P i x e l R a t i o   | |   1 ) ; 
-         
-         / /   F a d e   b a c k g r o u n d   t o   c r e a t e   t r a i l i n g   e f f e c t 
-         c t x . f i l l S t y l e   =   ' r g b a ( 5 ,   5 ,   5 ,   0 . 2 ) ' ; 
-         c t x . f i l l R e c t ( 0 ,   0 ,   w ,   h ) ; 
- 
-         / /   G r i d   l i n e s 
-         c t x . s t r o k e S t y l e   =   ' r g b a ( 2 5 5 , 2 5 5 , 2 5 5 , 0 . 0 5 ) ' ; 
-         c t x . l i n e W i d t h   =   1 ; 
-         c t x . b e g i n P a t h ( ) ; 
-         c t x . m o v e T o ( 0 ,   h / 2 ) ;   c t x . l i n e T o ( w ,   h / 2 ) ; 
-         c t x . s t r o k e ( ) ; 
- 
-         / /   P h y s i c s   o f   t h e   w a v e f o r m 
-         / /   H i g h e r   l a m b d a / d e l t a T   =   h i g h e r   a m p l i t u d e   &   f r e q u e n c y 
-         c o n s t   s t r e s s   =   M a t h . m a x ( 0 ,   c u r r e n t L a m b d a   /   l a m b d a C r i t ) ; 
-         c o n s t   h e a t   =   M a t h . m a x ( 0 ,   ( c u r r e n t D e l t a T   -   1 )   /   4 ) ;   
-         
-         c o n s t   b a s e A m p   =   5   +   ( s t r e s s   *   2 0 ) ; 
-         c o n s t   f r e q   =   0 . 1   +   ( h e a t   *   0 . 5 ) ; 
-         
-         / /   A d d   c h a o s 
-         c o n s t   c h a o s   =   ( M a t h . r a n d o m ( )   -   0 . 5 )   *   ( s t r e s s   *   3 0 ) ; 
-         
-         l e t   y V a l   =   M a t h . s i n ( t i m e P o s   *   f r e q )   *   b a s e A m p   +   M a t h . c o s ( t i m e P o s   *   0 . 0 5 )   *   b a s e A m p   *   0 . 5   +   c h a o s ; 
- 
-         / /   D e t e c t   E x t r e m e   E v e n t s   ( S p i k e s ) 
-         l e t   e v e n t N a m e   =   n u l l ; 
-         l e t   i s S p i k e   =   f a l s e ; 
-         i f   ( s t r e s s   >   0 . 8   & &   M a t h . r a n d o m ( )   <   0 . 0 2   *   s t r e s s )   { 
-             y V a l   * =   ( 3   +   M a t h . r a n d o m ( )   *   4 ) ;   / /   m a s s i v e   s p i k e 
-             i s S p i k e   =   t r u e ; 
-             i f   ( h e a t   >   0 . 6 )   e v e n t N a m e   =   t y p e o f   I 1 8 n   ! = =   ' u n d e f i n e d '   ?   I 1 8 n . g e t T e x t ( ' T S U N A M I ' )   :   ' T S U N A M I ' ; 
-             e l s e   e v e n t N a m e   =   t y p e o f   I 1 8 n   ! = =   ' u n d e f i n e d '   ?   I 1 8 n . g e t T e x t ( ' S E I S M I C ' )   :   ' E A R T H Q U A K E ' ; 
-         } 
- 
-         / /   S h i f t   p o i n t s 
-         p o i n t s . p u s h ( y V a l ) ; 
-         i f   ( p o i n t s . l e n g t h   >   m a x P o i n t s )   p o i n t s . s h i f t ( ) ; 
- 
-         / /   D r a w   w a v e 
-         c t x . b e g i n P a t h ( ) ; 
-         c o n s t   s t e p   =   w   /   ( m a x P o i n t s   -   1 ) ; 
-         f o r   ( l e t   i   =   0 ;   i   <   p o i n t s . l e n g t h ;   i + + )   { 
-             c o n s t   p x   =   i   *   s t e p ; 
-             c o n s t   p y   =   ( h   /   2 )   +   p o i n t s [ i ] ; 
-             i f   ( i   = = =   0 )   c t x . m o v e T o ( p x ,   p y ) ; 
-             e l s e   c t x . l i n e T o ( p x ,   p y ) ; 
-         } 
- 
-         / /   C o l o r   b a s e d   o n   s t r e s s 
-         i f   ( s t r e s s   >   1 . 0 )   c t x . s t r o k e S t y l e   =   ' # e f 4 4 4 4 ' ;   / /   R e d 
-         e l s e   i f   ( s t r e s s   >   0 . 7 )   c t x . s t r o k e S t y l e   =   ' # e a b 3 0 8 ' ;   / /   Y e l l o w 
-         e l s e   c t x . s t r o k e S t y l e   =   ' # 1 0 b 9 8 1 ' ;   / /   G r e e n 
- 
-         c t x . l i n e W i d t h   =   2 ; 
-         c t x . l i n e J o i n   =   ' r o u n d ' ; 
-         c t x . s t r o k e ( ) ; 
- 
-         / /   D r a w   E v e n t   t e x t   i f   s p i k e 
-         i f   ( i s S p i k e   & &   e v e n t N a m e )   { 
-             c t x . f i l l S t y l e   =   ' # e f 4 4 4 4 ' ; 
-             c t x . f o n t   =   ' b o l d   1 2 p x   m o n o s p a c e ' ; 
-             c t x . f i l l T e x t ( e v e n t N a m e ,   w / 2 ,   h / 2   -   3 0 ) ; 
-         } 
- 
-         t i m e P o s + + ; 
-         a n i m F r a m e   =   r e q u e s t A n i m a t i o n F r a m e ( l o o p ) ; 
-     } 
- 
-     r e t u r n   {   i n i t ,   u p d a t e P a r a m s   } ; 
- } ) ( ) ; 
-  
- 
+// %% Live Seismograph %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+const Seismograph = (() => {
+  let canvas, ctx;
+  let animFrame = null;
+  let currentLambda = 0, currentDeltaT = 0, lambdaCrit = 1.0;
+  let timePos = 0;
+  let points = [];
+  const maxPoints = 200;
+
+  function init(canvasId) {
+    canvas = document.getElementById(canvasId);
+    if (canvas) {
+      ctx = canvas.getContext('2d');
+      // Fix resolution
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentNode.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      canvas.style.width = \\px\;
+      canvas.style.height = \\px\;
+      
+      for(let i=0; i<maxPoints; i++) points.push(0);
+      if(!animFrame) loop();
+    }
+  }
+
+  function updateParams(lambda, crit, deltaT) {
+    currentLambda = lambda;
+    lambdaCrit = crit;
+    currentDeltaT = deltaT;
+  }
+
+  function loop() {
+    if (!ctx) return;
+    const w = canvas.width / (window.devicePixelRatio || 1);
+    const h = canvas.height / (window.devicePixelRatio || 1);
+    
+    // Fade background to create trailing effect
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+    ctx.stroke();
+
+    // Physics of the waveform
+    // Higher lambda/deltaT = higher amplitude & frequency
+    const stress = Math.max(0, currentLambda / lambdaCrit);
+    const heat = Math.max(0, (currentDeltaT - 1) / 4); 
+    
+    const baseAmp = 5 + (stress * 20);
+    const freq = 0.1 + (heat * 0.5);
+    
+    // Add chaos
+    const chaos = (Math.random() - 0.5) * (stress * 30);
+    
+    let yVal = Math.sin(timePos * freq) * baseAmp + Math.cos(timePos * 0.05) * baseAmp * 0.5 + chaos;
+
+    // Detect Extreme Events (Spikes)
+    let eventName = null;
+    let isSpike = false;
+    if (stress > 0.8 && Math.random() < 0.02 * stress) {
+      yVal *= (3 + Math.random() * 4); // massive spike
+      isSpike = true;
+      if (heat > 0.6) eventName = typeof I18n !== 'undefined' ? I18n.getText('TSUNAMI') : 'TSUNAMI';
+      else eventName = typeof I18n !== 'undefined' ? I18n.getText('SEISMIC') : 'EARTHQUAKE';
+    }
+
+    // Shift points
+    points.push(yVal);
+    if (points.length > maxPoints) points.shift();
+
+    // Draw wave
+    ctx.beginPath();
+    const step = w / (maxPoints - 1);
+    for (let i = 0; i < points.length; i++) {
+      const px = i * step;
+      const py = (h / 2) + points[i];
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+
+    // Color based on stress
+    if (stress > 1.0) ctx.strokeStyle = '#ef4444'; // Red
+    else if (stress > 0.7) ctx.strokeStyle = '#eab308'; // Yellow
+    else ctx.strokeStyle = '#10b981'; // Green
+
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Draw Event text if spike
+    if (isSpike && eventName) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(eventName, w/2, h/2 - 30);
+    }
+
+    timePos++;
+    animFrame = requestAnimationFrame(loop);
+  }
+
+  return { init, updateParams };
+})();
+
