@@ -103,12 +103,14 @@ var MCMCEngine = (function () {
   function computeLogLikelihood(params) {
     try {
       var result = StructuralEntropyModel.simulate(params);
-      if (!result || !result.time) return -Infinity;
+      if (!result || !result.time || !result.Nn || !result.Ns || !result.deltaT) return -Infinity;
 
       var ll = 0;
       var timeArr = result.time;
 
-      for (var i = 0; i < timeArr.length; i += 5) {
+      // Sample every ~5 years for speed
+      var step = Math.max(1, Math.floor(5 / (params.dt || 0.1)));
+      for (var i = 0; i < timeArr.length; i += step) {
         var yr = timeArr[i];
         if (yr > CURRENT_YEAR) break;
 
@@ -117,10 +119,12 @@ var MCMCEngine = (function () {
 
         if (realPop === null || realTemp === null) continue;
 
-        var modelPop  = result.population[i];
-        var modelTemp = result.temperature[i];
+        // Model population = North + South
+        var modelPop  = (result.Nn[i] || 0) + (result.Ns[i] || 0);
+        // Model temperature = deltaT anomaly
+        var modelTemp = result.deltaT[i] || 0;
 
-        if (!isFinite(modelPop) || !isFinite(modelTemp)) return -Infinity;
+        if (!isFinite(modelPop) || !isFinite(modelTemp)) continue; // skip bad points, don't kill entire chain
 
         var dPop  = modelPop  - realPop;
         var dTemp = modelTemp - realTemp;
