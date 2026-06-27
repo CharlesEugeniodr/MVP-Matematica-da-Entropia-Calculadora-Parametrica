@@ -13,10 +13,17 @@
 <body>
 
   <!-- ═══ Header ═══════════════════════════════════════════════════ -->
-  <header class="header">
-    <h1 class="header-title">Matemática da Entropia Estrutural</h1>
-    <p class="header-subtitle">Simulador de Dinâmica Socioambiental Complexa — 1970–2100</p>
-    <p class="header-author">Modelo baseado no artigo de Entropia Estrutural</p>
+  <header class="top-header">
+    <div class="header-content">
+      <div class="title-block">
+        <h1 data-i18n="title-main">Calculadora de Entropia Estrutural</h1>
+        <p class="subtitle" data-i18n="subtitle">Sistema Dinâmico Não-Linear de Colapso Socioambiental</p>
+      </div>
+      <div class="lang-toggle">
+        <button id="btn-pt" class="lang-btn active">PT</button>
+        <button id="btn-en" class="lang-btn">EN</button>
+      </div>
+    </div>
   </header>
 
   <!-- ═══ Relatório de Auditoria e Cenário ═══════════════ -->
@@ -36,8 +43,10 @@
 
   <!-- ═══ Scenario selector ════════════════════════════════════════ -->
   <div class="scenario-bar">
-    <span class="scenario-bar-label">Cenário:</span>
-    <div id="scenario-buttons"></div>
+    <div class="control-group">
+      <label for="scenario-select" data-i18n="scenario-select-label">Cenário Base (1970–2100):</label>
+      <select id="scenario-select"></select>
+    </div>
     <div class="scenario-description" id="scenario-description">
       Tendências atuais continuam: progresso tecnológico moderado, governança fraca, aquecimento de ~2.7°C.
     </div>
@@ -76,13 +85,13 @@
     <!-- Actions bar -->
     <div class="actions-bar">
       <div class="action-left">
-        <button class="export-btn" id="export-btn" title="Exportar dados brutos do cenário">
+        <button class="export-btn" id="export-btn" title="Exportar dados brutos do cenário" data-i18n="btn-csv">
           📊 CSV
         </button>
-        <button class="export-btn pdf-btn" id="pdf-btn" title="Gerar Laudo Científico IPCC para Impressão">
+        <button class="export-btn pdf-btn" id="pdf-btn" title="Gerar Laudo Científico IPCC para Impressão" data-i18n="btn-pdf">
           📄 Laudo PDF
         </button>
-        <button class="export-btn audio-btn" id="audio-btn" title="Ativar Sonorização de Tensão Sistêmica">
+        <button class="export-btn audio-btn" id="audio-btn" title="Ativar Sonorização de Tensão Sistêmica" data-i18n="btn-audio-off">
           🔈 Som: OFF
         </button>
       </div>
@@ -107,7 +116,7 @@
       </div>
       <div class="chart-card map-card" id="card-map">
         <!-- Mapa Global Termodinâmico em SVG Simples -->
-        <div class="map-title">Termodinâmica Global (Stress Climático)</div>
+        <div class="map-title" data-i18n="card-map-title">Termodinâmica Global (Stress Climático)</div>
         <svg viewBox="0 0 1000 500" class="world-map-svg" id="world-map">
           <!-- Américas -->
           <path class="map-region north" d="M 200 100 Q 250 50 300 100 Q 280 150 250 200 Q 200 150 200 100 Z"/>
@@ -121,6 +130,9 @@
           <!-- Equador Line -->
           <line x1="0" y1="250" x2="1000" y2="250" class="equator-line"/>
         </svg>
+      </div>
+      <div class="chart-card seismo-card" id="card-seismograph">
+        <canvas id="chart-seismograph"></canvas>
       </div>
       <div class="chart-card phase-space-card" id="card-phasespace">
         <canvas id="chart-phasespace"></canvas>
@@ -137,7 +149,7 @@
 
   <!-- ═══ Sidebar ══════════════════════════════════════════════════ -->
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-title">Parâmetros do Modelo</div>
+    <div class="sidebar-title" data-i18n="sidebar-title">Parâmetros do Modelo</div>
     <div id="param-panel"></div>
     <div id="custom-sliders"></div>
   </aside>
@@ -145,30 +157,37 @@
   <!-- ═══ Live Monitor (Relógio & Catástrofes) ═════════════════════ -->
   <div class="live-monitor-container">
     <div class="atomic-clock-panel">
-      <h4>⏱️ Relógio Atômico da Entropia</h4>
-      <p class="atomic-clock-subtitle">Acúmulo estrutural em tempo real</p>
+      <h4 data-i18n="clock-title">⏱️ Relógio Atômico da Entropia</h4>
+      <p class="atomic-clock-subtitle" data-i18n="clock-sub">Acúmulo estrutural em tempo real</p>
       <div class="atomic-clock-display" id="atomic-clock-display">
         0.000000000
       </div>
-      <div class="atomic-clock-status" id="atomic-clock-status">Estável</div>
+      <div class="atomic-clock-status" id="atomic-clock-status" data-i18n="status-stable">Estável</div>
     </div>
     
     <div class="catastrophe-feed-panel">
-      <h4>📡 Monitor Global de Anomalias</h4>
+      <h4 data-i18n="monitor-title">📡 Monitor Global de Anomalias</h4>
       <div class="feed-container" id="catastrophe-feed">
         <div class="feed-item sys-msg">Sistema de monitoramento iniciado. Escaneando distorções na malha entrópica...</div>
       </div>
     </div>
   </div>
 
+  <!-- ═══ Global News Network (GNN Ticker) ═════════════════════════ -->
+  <div class="gnn-ticker-container">
+    <div class="gnn-label">GNN LIVE</div>
+    <div class="gnn-marquee">
+      <span id="gnn-text">INITIALIZING GLOBAL NEWS NETWORK... STANDBY.</span>
+    </div>
+  </div>
+
   <!-- ═══ Footer ═══════════════════════════════════════════════════ -->
   <footer class="footer">
-    <p>Calculadora de Entropia Estrutural — Motor Estocástico com Atrasos (DDEs)</p>
-    <p class="footer-author">Idealizador e Construtor: <strong>Charles de Paula Eugenio</strong></p>
-    <p>Execução local no navegador. Nenhum dado é enviado a servidores.</p>
+    <p data-i18n="footer-text">Idealizado e construído por Charles Eugenio. Motor Estocástico com DDEs.</p>
   </footer>
 
   <!-- ═══ Scripts ══════════════════════════════════════════════════ -->
+  <script src="js/i18n.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/model.js?v=2"></script>
   <script src="js/scenarios.js"></script>

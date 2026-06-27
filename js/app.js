@@ -19,8 +19,62 @@ const App = (() => {
    * Initialize the application.
    */
   function init() {
-    // Initialize controls with change callback
-    Controls.init(onParametersChanged);
+    console.log("Initializing App...");
+    
+    // Set default language
+    if (typeof I18n !== 'undefined') {
+      I18n.setLanguage('pt');
+    }
+
+    // Initialize UI controls
+    Controls.init(DEFAULT_PARAMS);
+    Controls.onScenarioChange(onParametersChanged);
+    Controls.onParamChange(onParametersChanged);
+    
+    const initialParams = Controls.getParams();
+    const initialScenario = Controls.getCurrentScenario();
+    
+    setupEducationalModals();
+
+    // Language Toggles
+    const btnPt = document.getElementById('btn-pt');
+    const btnEn = document.getElementById('btn-en');
+    if (btnPt && btnEn) {
+      btnPt.addEventListener('click', () => {
+        if (typeof I18n !== 'undefined') I18n.setLanguage('pt');
+        btnPt.classList.add('active');
+        btnEn.classList.remove('active');
+        if (currentResults) renderCharts(currentResults);
+      });
+      btnEn.addEventListener('click', () => {
+        if (typeof I18n !== 'undefined') I18n.setLanguage('en');
+        btnEn.classList.add('active');
+        btnPt.classList.remove('active');
+        if (currentResults) renderCharts(currentResults);
+      });
+    }
+
+    // Actions
+    const audioBtn = document.getElementById('audio-btn');
+    if (audioBtn) {
+      audioBtn.addEventListener('click', () => {
+        if (typeof AudioEngine !== 'undefined') {
+          const isOn = AudioEngine.toggle();
+          audioBtn.classList.toggle('on', isOn);
+          audioBtn.textContent = isOn ? (typeof I18n !== 'undefined' ? I18n.getText('btn-audio-on') : '🔊 Som: ON') : (typeof I18n !== 'undefined' ? I18n.getText('btn-audio-off') : '🔈 Som: OFF');
+        }
+      });
+    }
+
+    const pdfBtn = document.getElementById('pdf-btn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', generatePDF);
+    }
+
+    console.log('%c🌀 Calculadora de Entropia Estrutural', 
+      'color: #06b6d4; font-size: 16px; font-weight: bold;');
+    console.log('%cPacote de Imersão: Audio, PDF, SVG Map, Glitch e GNN', 
+      'color: #94a3b8; font-size: 11px;');
 
     // Run initial simulation
     runSimulation();
@@ -151,6 +205,10 @@ const App = (() => {
     animationFrame = requestAnimationFrame(() => {
       ChartEngine.renderAll(results);
     });
+    
+    if (typeof Seismograph !== 'undefined') {
+      Seismograph.init('chart-seismograph');
+    }
   }
 
   /**
@@ -330,6 +388,23 @@ const App = (() => {
     
     equator.forEach(el => el.style.fill = `hsl(${hueEq}, 70%, 35%)`);
     north.forEach(el => el.style.fill = `hsl(${hueNo}, 40%, 25%)`);
+
+    // 4. Update Seismograph
+    if (typeof Seismograph !== 'undefined') {
+      Seismograph.updateParams(lambda, lambda_crit, deltaT);
+    }
+
+    // 5. Update GNN News Ticker (randomly every ~3 seconds)
+    if (typeof I18n !== 'undefined' && Math.random() < 0.02) {
+      let level = 'low';
+      if (lambda >= lambda_crit) level = 'high';
+      else if (lambda >= lambda_crit * 0.8) level = 'medium';
+      
+      const newsEl = document.getElementById('gnn-text');
+      if (newsEl) {
+        newsEl.textContent = `::: ${I18n.getRandomNews(level)} :::`;
+      }
+    }
   }
 
   /**

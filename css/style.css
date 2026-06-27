@@ -748,6 +748,13 @@ body::before {
   stroke-dasharray: 5,5;
 }
 
+/* ── Seismograph Card ────────────────────────────────────────── */
+.seismo-card {
+  position: relative;
+  background: #050505; /* Darker background for oscilloscope feel */
+  border: 1px solid #1f2937;
+}
+
 /* ── Glitch effect ───────────────────────────────────────────── */
 .glitch-critical {
   animation: glitch-anim 0.4s infinite;
@@ -768,6 +775,58 @@ body::before {
 @keyframes fade-in {
   from { opacity: 0; transform: translateX(-10px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Global News Network Ticker ────────────────────────────────── */
+.gnn-ticker-container {
+  display: flex;
+  background: #dc2626; /* Breaking news red */
+  color: #ffffff;
+  font-family: 'Inter', system-ui, sans-serif;
+  height: 30px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  border-top: 2px solid #b91c1c;
+  border-bottom: 2px solid #b91c1c;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.2);
+}
+
+.gnn-label {
+  background: #000;
+  color: #fff;
+  font-weight: bold;
+  padding: 0 15px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+  letter-spacing: 1px;
+  font-size: 0.85rem;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+}
+
+.gnn-marquee {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+}
+
+.gnn-marquee span {
+  position: absolute;
+  white-space: nowrap;
+  line-height: 30px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  animation: scroll-left 15s linear infinite;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+@keyframes scroll-left {
+  0% { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
 }
 
 /* ── Footer ────────────────────────────────────────────────────── */
@@ -1065,3 +1124,30 @@ body::before {
 .equation-item:hover .info-icon {
   opacity: 1;
 }
+
+ . l a n g - t o g g l e   { 
+     d i s p l a y :   f l e x ; 
+     g a p :   0 . 5 r e m ; 
+     m a r g i n - t o p :   5 p x ; 
+ } 
+ . l a n g - b t n   { 
+     b a c k g r o u n d :   v a r ( - - b g - c a r d ) ; 
+     b o r d e r :   1 p x   s o l i d   v a r ( - - b o r d e r ) ; 
+     c o l o r :   v a r ( - - t e x t - m u t e d ) ; 
+     p a d d i n g :   0 . 2 5 r e m   0 . 5 r e m ; 
+     f o n t - s i z e :   0 . 7 5 r e m ; 
+     b o r d e r - r a d i u s :   4 p x ; 
+     c u r s o r :   p o i n t e r ; 
+     t r a n s i t i o n :   a l l   0 . 2 s ; 
+ } 
+ . l a n g - b t n : h o v e r   { 
+     b a c k g r o u n d :   r g b a ( 1 4 8 ,   1 6 3 ,   1 8 4 ,   0 . 1 ) ; 
+     c o l o r :   v a r ( - - t e x t - b r i g h t ) ; 
+ } 
+ . l a n g - b t n . a c t i v e   { 
+     b a c k g r o u n d :   v a r ( - - s k y ) ; 
+     c o l o r :   # 0 f 1 7 2 a ; 
+     f o n t - w e i g h t :   b o l d ; 
+     b o r d e r - c o l o r :   v a r ( - - s k y ) ; 
+ }  
+ 
