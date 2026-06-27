@@ -99,9 +99,27 @@ const ValidationEngine = (function () {
   /* ── crossValidate ───────────────────────────────────────────────────── */
 
   /**
+   * Helper: extract model population and temperature at specific years.
+   */
+  function extractAtYears(sim, targetYears) {
+    const pops = [], temps = [];
+    for (let j = 0; j < targetYears.length; j++) {
+      const yr = targetYears[j];
+      // Find closest time index
+      let bestIdx = 0, bestDist = Infinity;
+      for (let i = 0; i < sim.time.length; i++) {
+        const d = Math.abs(sim.time[i] - yr);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+        if (d < 0.5) break;
+      }
+      pops.push((sim.Nn[bestIdx] || 0) + (sim.Ns[bestIdx] || 0));
+      temps.push(sim.deltaT[bestIdx] || 0);
+    }
+    return { pops, temps };
+  }
+
+  /**
    * Temporal cross-validation: train on 1970-2000, test on 2000-2024.
-   * @param {Object} baseParams - Base parameter set for the model.
-   * @returns {{ trainMetrics: Object, testMetrics: Object, calibratedParams: Object, overfitRatio: number }}
    */
   function crossValidate(baseParams) {
     const real = RealData.getAll();
@@ -116,18 +134,26 @@ const ValidationEngine = (function () {
     const testTemp   = testIdx.map(i => real.temperature[i]);
 
     /* calibrate on train window */
-    const calibrated = RealData.autoCalibrate(baseParams, TRAIN_END);
+    let calibrated = baseParams;
+    if (RealData.autoCalibrate) {
+      const calResult = RealData.autoCalibrate(baseParams);
+      calibrated = calResult.params || calResult;
+    }
     const sim = simulate(calibrated);
+    if (!sim || !sim.time) return { trainMetrics: {}, testMetrics: {}, calibratedParams: calibrated, overfitRatio: 1 };
+
+    const trainExtracted = extractAtYears(sim, trainYears);
+    const testExtracted = extractAtYears(sim, testYears);
 
     const lastTrainPop  = trainPop[trainPop.length - 1] || 0;
     const lastTrainTemp = trainTemp[trainTemp.length - 1] || 0;
 
     const trainMetrics = computeMetrics(
-      sim.years, sim.population, sim.temperature,
+      trainYears, trainExtracted.pops, trainExtracted.temps,
       trainYears, trainPop, trainTemp, lastTrainPop, lastTrainTemp
     );
     const testMetrics = computeMetrics(
-      sim.years, sim.population, sim.temperature,
+      testYears, testExtracted.pops, testExtracted.temps,
       testYears, testPop, testTemp, lastTrainPop, lastTrainTemp
     );
 
@@ -183,8 +209,6 @@ const ValidationEngine = (function () {
 
   /**
    * Compare models of increasing complexity (linear → IFE full).
-   * @param {Object} baseParams - Base IFE parameter set.
-   * @returns {Array<{ name: string, params_count: number, rmse: number, logLL: number, aic: number, bic: number, deltaAIC: number }>}
    */
   function compareModels(baseParams) {
     const real = RealData.getAll();
@@ -198,7 +222,7 @@ const ValidationEngine = (function () {
     const linRMSE = modelRMSE(linPred, P);
     const linLL = logLikelihood(linPred, P, linRMSE);
     results.push({ name: 'Linear', params_count: 2, rmse: linRMSE, logLL: linLL,
-      aic: MCMCEngine.computeAIC(linLL, 2), bic: MCMCEngine.computeBIC(linLL, 2, n) });
+      aic: MCMCEngine.computeAIC(2, linLL), bic: MCMCEngine.computeBIC(2, n, linLL) });
 
     /* — Model B: Logistic — */
     const logFit = fitLogistic(Y, P);
@@ -206,33 +230,31 @@ const ValidationEngine = (function () {
     const logRMSE = modelRMSE(logPred, P);
     const logLL = logLikelihood(logPred, P, logRMSE);
     results.push({ name: 'Logistic', params_count: 3, rmse: logRMSE, logLL: logLL,
-      aic: MCMCEngine.computeAIC(logLL, 3), bic: MCMCEngine.computeBIC(logLL, 3, n) });
+      aic: MCMCEngine.computeAIC(3, logLL), bic: MCMCEngine.computeBIC(3, n, logLL) });
 
     /* — Model C: IFE Minimal (5 free) — */
-    const minParams = Object.assign({}, baseParams);
-    const minSim = simulate(minParams);
-    const minPred = Y.map(y => { const i = minSim.years.indexOf(y); return i >= 0 ? minSim.population[i] : NaN; });
-    const minRMSE = modelRMSE(minPred, P);
-    const minLL = logLikelihood(minPred, P, minRMSE);
+    const minSim = simulate(baseParams);
+    const minEx = extractAtYears(minSim, Y);
+    const minRMSE = modelRMSE(minEx.pops, P);
+    const minLL = logLikelihood(minEx.pops, P, minRMSE);
     results.push({ name: 'IFE Minimal', params_count: 5, rmse: minRMSE, logLL: minLL,
-      aic: MCMCEngine.computeAIC(minLL, 5), bic: MCMCEngine.computeBIC(minLL, 5, n) });
+      aic: MCMCEngine.computeAIC(5, minLL), bic: MCMCEngine.computeBIC(5, n, minLL) });
 
-    /* — Model D: IFE Reduced (8 free) — */
-    const redParams = RealData.autoCalibrate ? RealData.autoCalibrate(baseParams) : baseParams;
-    const redSim = simulate(redParams);
-    const redPred = Y.map(y => { const i = redSim.years.indexOf(y); return i >= 0 ? redSim.population[i] : NaN; });
-    const redRMSE = modelRMSE(redPred, P);
-    const redLL = logLikelihood(redPred, P, redRMSE);
+    /* — Model D: IFE Reduced (8 free — current calibrated) — */
+    const redSim = simulate(baseParams); // Uses current (potentially MCMC-calibrated) params
+    const redEx = extractAtYears(redSim, Y);
+    const redRMSE = modelRMSE(redEx.pops, P);
+    const redLL = logLikelihood(redEx.pops, P, redRMSE);
     results.push({ name: 'IFE Reduced', params_count: 8, rmse: redRMSE, logLL: redLL,
-      aic: MCMCEngine.computeAIC(redLL, 8), bic: MCMCEngine.computeBIC(redLL, 8, n) });
+      aic: MCMCEngine.computeAIC(8, redLL), bic: MCMCEngine.computeBIC(8, n, redLL) });
 
     /* — Model E: IFE Full (26 params) — */
-    const fullSim = simulate(baseParams);
-    const fullPred = Y.map(y => { const i = fullSim.years.indexOf(y); return i >= 0 ? fullSim.population[i] : NaN; });
-    const fullRMSE = modelRMSE(fullPred, P);
-    const fullLL = logLikelihood(fullPred, P, fullRMSE);
+    const fullSim = simulate(StructuralEntropyModel.DEFAULT_PARAMS);
+    const fullEx = extractAtYears(fullSim, Y);
+    const fullRMSE = modelRMSE(fullEx.pops, P);
+    const fullLL = logLikelihood(fullEx.pops, P, fullRMSE);
     results.push({ name: 'IFE Full', params_count: 26, rmse: fullRMSE, logLL: fullLL,
-      aic: MCMCEngine.computeAIC(fullLL, 26), bic: MCMCEngine.computeBIC(fullLL, 26, n) });
+      aic: MCMCEngine.computeAIC(26, fullLL), bic: MCMCEngine.computeBIC(26, n, fullLL) });
 
     /* deltaAIC */
     const bestAIC = Math.min(...results.map(r => r.aic));
